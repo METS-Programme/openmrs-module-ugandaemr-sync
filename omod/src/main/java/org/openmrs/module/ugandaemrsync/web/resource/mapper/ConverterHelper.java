@@ -35,8 +35,9 @@ public class ConverterHelper {
             if (pi != null) {
                 identifier = pi.getIdentifier();
             }
-            return new SyncTaskDetails(patient.getPersonName().getFullName(), identifier, statusCode, status, dateSent,patient.getUuid());
-        } if(Objects.equals(syncTask.getSyncTaskType().getUuid(), VIRAL_LOAD_RESULT_PULL_TYPE_UUID)){
+            return new SyncTaskDetails(patient.getPersonName().getFullName(), identifier, statusCode, status, dateSent, patient.getUuid());
+        }
+        if (Objects.equals(syncTask.getSyncTaskType().getUuid(), VIRAL_LOAD_RESULT_PULL_TYPE_UUID)) {
             PatientIdentifierType identifierType = Context.getPatientService().getPatientIdentifierTypeByUuid(PATIENT_IDENTIFIER_TYPE);
             String accessionNumber = syncTask.getSyncTask();
             Patient patient = getPatientByAccessionNumber(accessionNumber);
@@ -49,9 +50,11 @@ public class ConverterHelper {
             if (pi != null) {
                 identifier = pi.getIdentifier();
             }
-            return new SyncTaskDetails(patient.getPersonName().getFullName(), identifier, status, statusCode, dateSent,statusMessage,patient.getUuid());
+            return new SyncTaskDetails(patient.getPersonName().getFullName(), identifier, status, statusCode, dateSent, statusMessage, patient.getUuid());
         }
-        else {
+        if (Objects.equals(syncTask.getSyncTaskType().getUuid(), SEND_MER_REPORTS_SYNC_TASK_TYPE_UUID) || Objects.equals(syncTask.getSyncTaskType().getUuid(), SEND_HMIS_REPORTS_SYNC_TASK_TYPE_UUID)) {
+            return new SyncTaskDetails(syncTask.getSyncTask(), "", syncTask.getStatus(), syncTask.getStatusCode(), syncTask.getDateSent(), "");
+        } else {
             return null;
         }
     }
@@ -64,15 +67,15 @@ public class ConverterHelper {
         Date dateSent = syncFhirResource.getDateSynced();
         Date dateCreated = syncFhirResource.getDateCreated();
         Integer statusCode = syncFhirResource.getStatusCode();
-        String status= "";
-        if(statusCode!=null){
+        String status = "";
+        if (statusCode != null) {
             status = convertStatusCode(statusCode);
-        }else{
+        } else {
             statusCode = 0;
         }
         String identifier = "";
         String name = "";
-        String uuid ="";
+        String uuid = "";
         if (patient != null) {
             name = patient.getPersonName().getFullName();
             uuid = patient.getUuid();

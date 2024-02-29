@@ -9,16 +9,26 @@
  */
 package org.openmrs.module.ugandaemrsync.fragment.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openmrs.api.context.Context;
+import org.openmrs.module.reporting.common.DateUtil;
+import org.openmrs.module.reporting.common.MessageUtil;
+import org.openmrs.module.reporting.common.ObjectUtil;
 import org.openmrs.module.reporting.evaluation.EvaluationContext;
+import org.openmrs.module.reporting.evaluation.EvaluationUtil;
 import org.openmrs.module.reporting.evaluation.parameter.Mapped;
 import org.openmrs.module.reporting.report.ReportData;
 import org.openmrs.module.reporting.report.ReportDesign;
+import org.openmrs.module.reporting.report.ReportDesignResource;
 import org.openmrs.module.reporting.report.ReportRequest;
 import org.openmrs.module.reporting.report.definition.ReportDefinition;
 import org.openmrs.module.reporting.report.definition.service.ReportDefinitionService;
+import org.openmrs.module.reporting.report.renderer.RenderingException;
 import org.openmrs.module.reporting.report.renderer.RenderingMode;
 import org.openmrs.module.reporting.report.renderer.TextTemplateRenderer;
+import org.openmrs.module.reporting.report.renderer.template.TemplateEngine;
+import org.openmrs.module.reporting.report.renderer.template.TemplateEngineManager;
 import org.openmrs.module.reporting.report.service.ReportService;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
@@ -30,16 +40,15 @@ import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.page.PageModel;
 import org.openmrs.util.OpenmrsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -191,33 +200,34 @@ public class SendReportsFragmentController {
 		String strOutput="";
 		try{
 			ReportDefinition rd= getReportDefinitionService().getDefinitionByUuid(uuid);
+			EvaluationContext context = new EvaluationContext();
+			ReportData reportData = null;
 			if (rd == null) {
 				throw new IllegalArgumentException("unable to find  report with uuid "
 						+ uuid);
 			}else {
+				Map<String, Object> parameterValues = new HashMap<String, Object>();
+				parameterValues.put("endDate", endDate);
+				parameterValues.put("startDate", startDate);
+
+				context.setParameterValues(parameterValues);
+
+				reportData = getReportDefinitionService().evaluate(rd, context);
+
 				List<ReportDesign> reportDesigns = Context.getService(ReportService.class).getReportDesigns(rd, TextTemplateRenderer.class, false);
 				ReportDesign reportDesign = reportDesigns.stream().filter(p -> "JSON".equals(p.getName())).findAny().orElse(null);
 				String reportRendergingMode = JSON_REPORT_RENDERER_TYPE + "!" + reportDesign.getUuid();
-				RenderingMode renderingMode = new RenderingMode(reportRendergingMode);
-				if (!renderingMode.getRenderer().canRender(rd)) {
-					throw new IllegalArgumentException("Unable to render Report with " + reportRendergingMode);
-				}
-				Map<String, Object> parameterValues = new HashMap<String, Object>();
+                RenderingMode renderingMode = new RenderingMode(reportRendergingMode);
+                if (!renderingMode.getRenderer().canRender(rd)) {
+                    throw new IllegalArgumentException("Unable to render Report with " + reportRendergingMode);
+                }
 
-				parameterValues.put("endDate", endDate);
-				parameterValues.put("startDate", startDate);
-				EvaluationContext context = new EvaluationContext();
-				context.setParameterValues(parameterValues);
-				ReportData reportData = getReportDefinitionService().evaluate(rd, context);
-				ReportRequest reportRequest = new ReportRequest();
-				reportRequest.setReportDefinition(new Mapped<ReportDefinition>(rd, context.getParameterValues()));
-				reportRequest.setRenderingMode(renderingMode);
-				File file = new File(OpenmrsUtil.getApplicationDataDirectory() + "sendReports");
-				FileOutputStream fileOutputStream = new FileOutputStream(file);
-				renderingMode.getRenderer().render(reportData, renderingMode.getArgument(), fileOutputStream);
+                JsonNode report = createPayload(reportData, reportDesign);
 
-				strOutput = readOutputFile(strOutput);
-			}
+				strOutput= report.toString();
+
+
+            }
 		}catch (Exception e){
 			e.printStackTrace();
 		}
@@ -240,6 +250,66 @@ public class SendReportsFragmentController {
 		fstreamItem.close();
 
 		return strOutput;
+	}
+
+	private JsonNode createPayload(ReportData reportData, ReportDesign reportDesign) {
+		HashMap<String, String> map = new HashMap<>();
+		JsonNode payLoad = null;
+		try {
+
+			File file = new File(OpenmrsUtil.getApplicationDataDirectory() + "sendReports");
+			FileOutputStream fileOutputStream = new FileOutputStream(file);
+
+			Writer pw = new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8);
+			TextTemplateRenderer textTemplateRenderer = new TextTemplateRenderer();
+			ReportDesignResource reportDesignResource = textTemplateRenderer.getTemplate(reportDesign);
+			String templateContents = new String(reportDesignResource.getContents(), StandardCharsets.UTF_8);
+
+			templateContents = fillTemplateWithReportData(pw, templateContents, reportData, reportDesign, fileOutputStream);
+			String wholePayLoad = fillTemplateWithReportData(pw, templateContents, reportData, reportDesign, fileOutputStream);
+
+			ObjectMapper objectMapper = new ObjectMapper();
+			JsonNode jsonNode = objectMapper.readTree(wholePayLoad);
+
+			payLoad = jsonNode.get("json");
+
+			pw.close();
+		} catch (Exception e) {
+			e.fillInStackTrace();
+		}
+		return payLoad;
+	}
+
+
+	private String fillTemplateWithReportData(Writer pw, String templateContents, ReportData reportData, ReportDesign reportDesign, FileOutputStream fileOutputStream) throws IOException, RenderingException {
+
+		try {
+			TextTemplateRenderer textTemplateRenderer = new TextTemplateRenderer();
+			Map<String, Object> replacements = textTemplateRenderer.getBaseReplacementData(reportData, reportDesign);
+			String templateEngineName = reportDesign.getPropertyValue("templateType", (String) null);
+			TemplateEngine engine = TemplateEngineManager.getTemplateEngineByName(templateEngineName);
+			if (engine != null) {
+				Map<String, Object> bindings = new HashMap();
+				bindings.put("reportData", reportData);
+				bindings.put("reportDesign", reportDesign);
+				bindings.put("data", replacements);
+				bindings.put("util", new ObjectUtil());
+				bindings.put("dateUtil", new DateUtil());
+				bindings.put("msg", new MessageUtil());
+				templateContents = engine.evaluate(templateContents, bindings);
+			}
+
+			String prefix = textTemplateRenderer.getExpressionPrefix(reportDesign);
+			String suffix = textTemplateRenderer.getExpressionSuffix(reportDesign);
+			templateContents = EvaluationUtil.evaluateExpression(templateContents, replacements, prefix, suffix).toString();
+			pw.write(templateContents.toString());
+			return templateContents;
+
+		} catch (RenderingException var17) {
+			throw var17;
+		} catch (Throwable var18) {
+			throw new RenderingException("Unable to render results due to: " + var18, var18);
+		}
 	}
 	
 }
