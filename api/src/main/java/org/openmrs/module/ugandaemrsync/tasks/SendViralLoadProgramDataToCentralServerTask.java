@@ -31,6 +31,7 @@ import static org.openmrs.module.ugandaemrsync.server.SyncConstant.ANC_IDENTIFIE
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.NATIONAL_ID_IDENTIFIER_TYPE_UUID;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.PNC_IDENTIFIER_TYPE_UUID;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.Latest_obs_of_Person;
+import static org.openmrs.module.ugandaemrsync.server.SyncConstant.Latest_obs_of_Person_1;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.firstLineBody;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.secondLineBody;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.thirdLineBody;
@@ -134,8 +135,17 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                  regimen_code = Integer.parseInt(regimenList.get(0).toString());
                 current_regimen = Context.getConceptService().getConcept(regimen_code).getName().getName();
             }
-            if(current_regimen.isEmpty())
-                empty_fields += empty_fields+", current regimen";
+            if(current_regimen.isEmpty()){
+                List current_regimenList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1,"value_coded", patientId,90315),true);
+                if(current_regimenList_.size() > 0) {
+                    ArrayList regimenList = (ArrayList) current_regimenList.get(0);
+                    regimen_code = Integer.parseInt(regimenList.get(0).toString());
+                    current_regimen = Context.getConceptService().getConcept(regimen_code).getName().getName();
+                }else {
+                    empty_fields += empty_fields+", current regimen";
+                }
+
+            }
 
             List obs_dsdmList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,165143,date_activated),true);
 
@@ -167,8 +177,33 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                     dsdm_hie_code = "734163000_05";
                 }
             }
-            if(dsdm_hie_code.isEmpty())
-                empty_fields += empty_fields+", dsdm";
+            if(dsdm_hie_code.isEmpty()) {
+                List obs_dsdmList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1, "value_coded", patientId, 165143), true);
+                if (obs_dsdmList_.size() > 0) {
+                    ArrayList myList = (ArrayList) obs_dsdmList.get(0);
+                    int dsdm_code = Integer.parseInt(myList.get(0).toString());
+                    if (dsdm_code == 165138) {
+                        dsdm = "FBIM";
+                        dsdm_hie_code = "734163000_01";
+                    } else if (dsdm_code == 165140) {
+                        dsdm = "FBG";
+                        dsdm_hie_code = "734163000_02";
+                    } else if (dsdm_code == 165139) {
+                        dsdm = "FTDR";
+                        dsdm_hie_code = "734163000_03";
+                    } else if (dsdm_code == 165142) {
+                        dsdm = "CDDP";
+                        dsdm_hie_code = "734163000_04";
+                    } else if (dsdm_code == 165141) {
+                        dsdm = "CCLAD";
+                        dsdm_hie_code = "734163000_05";
+                    }
+                } else {
+                    empty_fields += empty_fields + ", dsdm";
+                }
+            }
+
+
 
             List obs_adherenceList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,90221,date_activated),true);
             String adherence="";
@@ -188,8 +223,23 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                     adherence_hie_code = "1156699004_03";
                 }
             }
-            if(adherence_hie_code.isEmpty())
-                empty_fields += empty_fields+", adherence";
+            if(adherence_hie_code.isEmpty()){
+                List obs_adherenceList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1, "value_coded", patientId, 90221), true);
+                ArrayList myList = (ArrayList) obs_adherenceList.get(0);
+                adherence_code =Integer.parseInt(myList.get(0).toString());
+                if(adherence_code==90156){
+                    adherence = "Good >= 95%";
+                    adherence_hie_code = "1156699004_01";
+                } else if (adherence_code==90157) {
+                    adherence = "Fair 85-94%";
+                    adherence_hie_code = "1156699004_02";
+                }else if(adherence_code==90158){
+                    adherence = "Poor <85%";
+                    adherence_hie_code = "1156699004_03";
+                }else
+                    empty_fields += empty_fields+", adherence";
+            }
+
 
             List current_regimen_start_date = administrationService.executeSQL(String.format("SELECT TIMESTAMPDIFF(MONTH, obs_datetime,'%s') from obs where person_id=%s and concept_id=90315 and voided=0 and value_coded = %s ORDER BY obs_datetime ASC LIMIT 1",date_activated.toString(),patientId,regimen_code),true);
 
@@ -219,8 +269,38 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                      duration_string_hie_code = "261773006_01";
                  }
             }
-            if(duration_string_hie_code.isEmpty())
-                empty_fields += empty_fields+", duration on art";
+            if(duration_string_hie_code.isEmpty()){
+                List current_regimen_start_date_ = administrationService.executeSQL(String.format("SELECT TIMESTAMPDIFF(MONTH, obs_datetime,'%s') from obs where person_id=%s and concept_id=90315 and voided=0 and value_coded = %s ORDER BY obs_datetime ASC LIMIT 1",patientId,regimen_code),true);
+                String duration_string_="";
+                String duration_string_hie_code_="";
+                if(current_regimen_start_date_.size()>0) {
+                    ArrayList myList = (ArrayList) current_regimen_start_date_.get(0);
+                    int duration= Integer.parseInt(myList.get(0).toString());
+                    if(duration >=60) {
+                        duration_string_=">5yrs";
+                        duration_string_hie_code_ = "261773006_05";
+                    }
+                    else if(duration >=24 && duration < 60 ) {
+                        duration_string_="2 -< 5yrs";
+                        duration_string_hie_code_ = "261773006_04";
+                    }
+                    else if(duration >=12 && duration < 24 ) {
+                        duration_string_="1 - 2yrs";
+                        duration_string_hie_code_ = "261773006_03";
+                    }
+                    else if(duration >=6 && duration < 12) {
+                        duration_string_="6 months - < 1yr";
+                        duration_string_hie_code_ = "261773006_02";
+                    }
+                    else if( duration < 6) {
+                        duration_string_="< 6months";
+                        duration_string_hie_code_ = "261773006_01";
+                    }
+                }else {
+                    empty_fields += empty_fields+", duration on art";
+                }
+            }
+
 
             List obs_pregnantList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,90041,date_activated),true);
 
@@ -234,6 +314,17 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
               }else if(preg_status==99601){
                   breastfeeding = true;
               }
+            }else {
+                List obs_pregnantList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1,"value_coded", patientId,90041),true);
+                if(obs_pregnantList_.size()>0) {
+                    ArrayList myList_ = (ArrayList) obs_pregnantList_.get(0);
+                    int preg_status = Integer.parseInt(myList_.get(0).toString());
+                    if (preg_status == 1065) {
+                        pregnant = true;
+                    } else if (preg_status == 99601) {
+                        breastfeeding = true;
+                    }
+                }
             }
 
             List obs_tbList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,90216,date_activated),true);
@@ -254,6 +345,19 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                   tb_phase_hie_code ="371569005_01";
                   hasActiveTB=true;
               }
+            }else {
+                List obs_tbList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1,"value_coded", patientId,90216),true);
+                ArrayList myList_ = (ArrayList) obs_tbList_.get(0);
+                int tb_status_answer =Integer.parseInt(myList_.get(0).toString());
+                if(tb_status_answer==90071){
+                    tb_phase= "Continuation Phase";
+                    tb_phase_hie_code ="371569005_02";
+                    hasActiveTB =true;
+                }else if (diagnosed_concepts.contains(tb_status_answer) ){
+                    tb_phase= "Initiation Phase";
+                    tb_phase_hie_code ="371569005_01";
+                    hasActiveTB=true;
+                }
             }
 
             List artStartList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"DATE(value_datetime)", patientId,99161,date_activated),true);
@@ -263,8 +367,11 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                 artStartDate = Context.getService(UgandaEMRSyncService.class).convertStringToDate(myList.get(0).toString(),"","yyyy-MM-dd");
             }
 
-            if(artStartDate==null)
-                empty_fields += empty_fields+", ART Start Date";
+            if(artStartDate==null){
+                List artStartList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1,"DATE(value_datetime)", patientId,99161),true);
+                ArrayList myList_ = (ArrayList) artStartList_.get(0);
+                artStartDate = Context.getService(UgandaEMRSyncService.class).convertStringToDate(myList_.get(0).toString(),"","yyyy-MM-dd");
+            }
 
             List obs_indication_for_VL = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,168689,date_activated),true);
 
@@ -294,9 +401,33 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                 else if(vl_indicator_code==168686){ //Special Considerations
                     vl_indication_hie_code = "315124004_07";
                 }
+            }else {
+                List obs_indication_for_VL_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1, "value_coded", patientId, 168689), true);
+
+                if (!obs_indication_for_VL_.isEmpty()) {
+                    ArrayList myList_ = (ArrayList) obs_indication_for_VL_.get(0);
+                    int vl_indicator_code = Integer.parseInt(myList_.get(0).toString());
+
+                    if (vl_indicator_code == 168683) { // 6 months after ART initiation
+                        vl_indication_hie_code = "315124004_01";
+                    } else if (vl_indicator_code == 168684) { // 12 months after ART initiation
+                        vl_indication_hie_code = "315124004_02";
+                    } else if (vl_indicator_code == 168688) { // Routine
+                        vl_indication_hie_code = "315124004_03";
+                    } else if (vl_indicator_code == 168687) { // Repeat (after IAC)
+                        vl_indication_hie_code = "315124004_04";
+                    } else if (vl_indicator_code == 168685) { // Suspected treatment failure
+                        vl_indication_hie_code = "315124004_05";
+                    } else if (vl_indicator_code == 166508) { // 1st ANC visit
+                        vl_indication_hie_code = "315124004_06";
+                    } else if (vl_indicator_code == 168686) { // Special Considerations
+                        vl_indication_hie_code = "315124004_07";
+                    }
+                } else {
+                    vl_indication_hie_code = "315124004_03"; // Routine
+                }
             }
-            if(vl_indication_hie_code.isEmpty())
-                empty_fields += empty_fields+", indication for vl";
+
 
             List obs_WHOList = administrationService.executeSQL(String.format(Latest_obs_of_Person,"value_coded", patientId,90203,date_activated),true);
 
@@ -353,8 +484,58 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
                         break;
                 }
             }
-            if(who_hie_code.isEmpty())
-                empty_fields += empty_fields+", who code";
+            if(who_hie_code.isEmpty()){
+                List obs_WHOList_ = administrationService.executeSQL(String.format(Latest_obs_of_Person_1,"value_coded", patientId,90203),true);
+                ArrayList myList_ = (ArrayList) obs_WHOList_.get(0);
+                int who_stage_concept =(Integer)myList_.get(0);
+
+                switch (who_stage_concept) {
+                    case 90033:
+                        //1
+                        who_hie_code = "737378009";
+                        who_display = "WHO 2007 HIV infection clinical stage 1";
+                        break;
+                    case 90034:
+                        //2
+                        who_hie_code = "737379001";
+                        who_display = "WHO 2007 HIV infection clinical stage 2";
+                        break;
+                    case 90035:
+                        //3
+                        who_hie_code = "737380003";
+                        who_display = "WHO 2007 HIV infection clinical stage 3";
+                        break;
+                    case 90036:
+                        //4
+                        who_hie_code = "737381004";
+                        who_display = "WHO 2007 HIV infection clinical stage 4";
+                        break;
+                    case 90293:
+                        //T1
+                        who_hie_code = "737378009";
+                        who_display = "WHO 2007 HIV infection clinical stage 1";
+                        break;
+                    case 90294:
+                        //T2
+                        who_hie_code = "737379001";
+                        who_display = "WHO 2007 HIV infection clinical stage 2";
+                        break;
+                    case 90295:
+                        //T3
+                        who_hie_code = "737380003";
+                        who_display = "WHO 2007 HIV infection clinical stage 3";
+                        break;
+                    case 90296:
+                        //T4
+                        who_hie_code = "737381004";
+                        who_display = "WHO 2007 HIV infection clinical stage 4";
+                        break;
+                    default:
+                        who_hie_code = "737378009";
+                        who_display = "WHO 2007 HIV infection clinical stage 1";
+                        break;
+                }
+            }
 
             String regimenline = getRegimenLineOfPatient(patient);
             String coded_regimen_line ="";
@@ -374,6 +555,8 @@ public class SendViralLoadProgramDataToCentralServerTask extends AbstractTask {
             filledJsonFile = String.format(jsonFHIRMap,patientARTNO,sampleID,patientARTNO,patientOpenMRSID,patientNATIONALID,patientANCID,otherID,patientPNC_ID,gender, patient.getBirthdate(),healthCenterCode,patient.getAge(),artStartDate,who_hie_code,who_display,duration_string_hie_code,pregnant,breastfeeding,hasActiveTB,tb_phase_hie_code,adherence_hie_code,dsdm_hie_code,vl_indication_hie_code,coded_regimen_line,current_regimen);
         }
         jsonMap.put("json", filledJsonFile);
+        System.out.println("--test programData payload ---");
+        System.out.println(jsonMap);
         return jsonMap;
     }
 
