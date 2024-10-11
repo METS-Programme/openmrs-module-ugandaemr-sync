@@ -504,4 +504,6 @@ public class SyncConstant {
 
 	public static final String Latest_obs_of_Person = "SELECT %s from obs where person_id=%s and concept_id=%s and obs_datetime <= '%s' and voided= 0 ORDER BY obs_datetime DESC LIMIT 1";
 	public static final String ALIS_SYNC_TASK_TYPE_UUID = "d4a3ebbb-e793-4e56-867c-0cf998e51f56";
+
+	public static final String Latest_obs_of_Person_1 = "SELECT %s from obs where person_id=%s and concept_id=%s and voided= 0 ORDER BY obs_datetime DESC LIMIT 1";
 }
