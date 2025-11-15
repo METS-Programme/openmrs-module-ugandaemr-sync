@@ -2048,4 +2048,17 @@
             SELECT patient_identifier_type_id, name, 'http://health.go.ug/cr/nationalid' as url, 1, '2025-04-28 08:43:43', 0, '5e8a626e-3d70-11f0-bcbd-bf35c84f3004' FROM patient_identifier_type WHERE uuid = 'f0c16a6d-dc5f-4118-a803-616d0075d282';
         </sql>
     </changeSet>
+
+    <changeSet id="ugandaemr-2025-06-11-1027" author="mmwanje">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM fhir_patient_identifier_system WHERE uuid = 'f87c46cc-4202-11f0-bed2-4212909f6a37'
+            </sqlCheck>
+        </preConditions>
+        <comment>U4X-1033: Add FHIR Patient Identifier System mapping for UIC if it does not exist</comment>
+        <sql>
+            INSERT INTO fhir_patient_identifier_system ( patient_identifier_type_id, name, url, creator, date_created, retired, uuid )
+            SELECT patient_identifier_type_id, 'UIC', 'https://health.go.ug/uic' as url, 1, '2025-06-11 09:33:43', 0, 'f87c46cc-4202-11f0-bed2-4212909f6a37' FROM patient_identifier_type WHERE uuid = '877169c4-92c6-4cc9-bf45-1ab95faea242';
+        </sql>
+    </changeSet>
 </databaseChangeLog>
