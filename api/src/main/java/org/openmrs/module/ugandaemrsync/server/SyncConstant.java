@@ -498,17 +498,17 @@ public class SyncConstant {
 
     public static final String VIRAL_LOAD_ORDERS_QUERY = "select orders.order_id from orders  inner join test_order on (test_order.order_id=orders.order_id) where accession_number is not null AND specimen_source is not null AND orders.instructions=\"REFER TO cphl\" AND orders.concept_id=165412 and date_stopped is null;";
 
-    public static final String VIRAL_LOAD_ORDER_QUERY = "select orders.order_id from orders  inner join test_order on (test_order.order_id=orders.order_id) where accession_number=\"%s\"";
+    public static final String VIRAL_LOAD_ORDER_QUERY = "select orders.order_id from orders  inner join test_order on (test_order.order_id=orders.order_id) where accession_number=:accessionNumber";
 
 	public static final String REGIMEN_LINE_QUERY ="Select patient_id from patient_state ps inner join patient_program pp on ps.patient_program_id = pp.patient_program_id inner join program p\n" +
 			"    on pp.program_id = p.program_id inner join program_workflow_state pws on ps.state = pws.program_workflow_state_id where ps.end_date is null and p.uuid='18c6d4aa-0a36-11e7-8dbb-507b9dc4c741' and pws.uuid='%s' and patient_id=%s";
 	public static final String LAB_ORDER_QUERY = "select orders.order_id from orders  inner join test_order on (test_order.order_id=orders.order_id) where order_number=\"%s\"";
 
-    public static final String PERSON_UUID_QUERY="select uuid from person WHERE date_created > '%s' OR date_changed > '%s' OR date_voided > '%s'";
-	public static final String PATIENT_UUID_QUERY="select uuid from patient inner join person on (person.person_id =patient.patient_id) WHERE patient.date_created > '%s' OR patient.date_changed > '%s' OR patient.voided > '%s'";
-    public static final String ENCOUNTER_UUID_QUERY="select uuid from encounter WHERE date_created > '%s' OR date_changed > '%s' OR date_voided > '%s'";
-    public static final String OBSERVATION_UUID_QUERY="select uuid from obs WHERE date_created > '%s' OR date_voided > '%s'";
-    public static final String PRACTITIONER_UUID_QUERY="select uuid from provider WHERE date_created > '%s' OR date_changed > '%s' OR date_retired > '%s'";
+    public static final String PERSON_UUID_QUERY="select uuid from person WHERE date_created > :lastSyncDate1 OR date_changed > :lastSyncDate2 OR date_voided > :lastSyncDate3";
+	public static final String PATIENT_UUID_QUERY="select uuid from patient inner join person on (person.person_id =patient.patient_id) WHERE patient.date_created > :lastSyncDate1 OR patient.date_changed > :lastSyncDate2 OR patient.voided > :lastSyncDate3";
+    public static final String ENCOUNTER_UUID_QUERY="select uuid from encounter WHERE date_created > :lastSyncDate1 OR date_changed > :lastSyncDate2 OR date_voided > :lastSyncDate3";
+    public static final String OBSERVATION_UUID_QUERY="select uuid from obs WHERE date_created > :lastSyncDate1 OR date_voided > :lastSyncDate2";
+    public static final String PRACTITIONER_UUID_QUERY="select uuid from provider WHERE date_created > :lastSyncDate1 OR date_changed > :lastSyncDate2 OR date_retired > :lastSyncDate3";
 
     public static final String FHIR_BUNDLE_RESOURCE_TRANSACTION ="{\"resourceType\":\"Bundle\",\"type\":\"transaction\",\"entry\":[%s]}";
     public static final String FHIR_BUNDLE_CASE_RESOURCE_TRANSACTION ="{\"resourceType\":\"Bundle\",\"type\":\"transaction\",\"entry\":%s}";

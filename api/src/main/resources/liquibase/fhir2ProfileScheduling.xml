@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <!-- Add scheduling configuration fields to sync_fhir_profile table -->
+    <changeSet id="20240501-add-profile-scheduling-fields" author="slubwama">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sync_fhir_profile"/>
+        </preConditions>
+
+        <!-- Scheduling Configuration -->
+        <addColumn tableName="sync_fhir_profile">
+            <column name="schedule_enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="schedule_type" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="cron_expression" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="fixed_rate_interval" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="fixed_delay_interval" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="start_date_time" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="end_date_time" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_retry_attempts" type="INT" defaultValueNumeric="3">
+                <constraints nullable="true"/>
+            </column>
+            <column name="retry_interval" type="BIGINT" defaultValueNumeric="60000">
+                <constraints nullable="true"/>
+            </column>
+            <column name="timeout_duration" type="BIGINT" defaultValueNumeric="300000">
+                <constraints nullable="true"/>
+            </column>
+            <column name="parallel_execution" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="true"/>
+            </column>
+            <column name="execution_priority" type="INT" defaultValueNumeric="5">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Task Configuration -->
+            <column name="task_name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="task_description" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="task_group" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Execution Tracking -->
+            <column name="last_execution_date" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="next_execution_date" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_execution_status" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="total_executions" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="successful_executions" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="failed_executions" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="average_execution_time" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_execution_error" type="VARCHAR(2000)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add indexes for performance -->
+        <addIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled">
+            <column name="schedule_enabled"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile" indexName="idx_task_group">
+            <column name="task_group"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status">
+            <column name="last_execution_status"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile" indexName="idx_profile_enabled">
+            <column name="profile_enabled"/>
+        </addIndex>
+
+        <rollback>
+            <!-- Drop indexes -->
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled"/>
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_task_group"/>
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status"/>
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_profile_enabled"/>
+
+            <!-- Drop columns -->
+            <dropColumn tableName="sync_fhir_profile" columnName="schedule_enabled"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="schedule_type"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="cron_expression"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="fixed_rate_interval"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="fixed_delay_interval"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="start_date_time"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="end_date_time"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="max_retry_attempts"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="retry_interval"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="timeout_duration"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="parallel_execution"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="execution_priority"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="task_name"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="task_description"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="task_group"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="last_execution_date"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="next_execution_date"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="last_execution_status"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="total_executions"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="successful_executions"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="failed_executions"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="average_execution_time"/>
+            <dropColumn tableName="sync_fhir_profile" columnName="last_execution_error"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Create execution history table -->
+    <changeSet id="20240501-create-profile-execution-history" author="slubwama">
+        <createTable tableName="sync_fhir_profile_execution_history">
+            <column name="execution_history_id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sync_fhir_profile_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="execution_start_time" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="execution_end_time" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="execution_status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resources_generated" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="cases_processed" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="execution_duration_ms" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="error_message" type="VARCHAR(2000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stack_trace" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uuid" type="CHAR(38)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="creator" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_created" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_changed" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="voided" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="voided_by" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_voided" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+            <column name="void_reason" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Add foreign key constraint -->
+        <addForeignKeyConstraint
+                baseTableName="sync_fhir_profile_execution_history"
+                baseColumnNames="sync_fhir_profile_id"
+                referencedTableName="sync_fhir_profile"
+                referencedColumnNames="sync_fhir_profile_id"
+                constraintName="fk_execution_history_profile"
+                onDelete="CASCADE"/>
+
+        <!-- Add indexes for performance -->
+        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_profile">
+            <column name="sync_fhir_profile_id"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_status">
+            <column name="execution_status"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_start_time">
+            <column name="execution_start_time"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_date_created">
+            <column name="date_created"/>
+        </addIndex>
+
+        <rollback>
+            <dropTable tableName="sync_fhir_profile_execution_history"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

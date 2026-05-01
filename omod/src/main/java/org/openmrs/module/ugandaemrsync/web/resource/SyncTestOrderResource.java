@@ -4,6 +4,8 @@ import org.openmrs.Order;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRHttpURLConnection;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.ugandaemrsync.web.resource.DTO.SyncTestOrderSync;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.ConversionUtil;
@@ -25,6 +27,7 @@ import org.openmrs.module.webservices.validation.ValidateUtil;
 import java.util.*;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncTestOrder", supportedClass = SyncTestOrderSync.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncTestOrderResource extends DelegatingCrudResource<SyncTestOrderSync> {
 
     @Override
@@ -38,6 +41,7 @@ public class SyncTestOrderResource extends DelegatingCrudResource<SyncTestOrderS
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.MANAGE_LAB_ORDERS, rateLimit = 50)
     public Object create(SimpleObject propertiesToCreate, RequestContext context) throws ResponseException {
         // Retrieve required services once
         UgandaEMRHttpURLConnection ugandaEMRHttpURLConnection = new UgandaEMRHttpURLConnection();

@@ -23,12 +23,16 @@ import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceD
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.ugandaemrsync.web.interceptor.ResourceSecurityInterceptor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncfhirresource", supportedClass = SyncFhirResource.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncFhirResourceResource extends DelegatingCrudResource<SyncFhirResource> {
 
     @Override
@@ -37,12 +41,15 @@ public class SyncFhirResourceResource extends DelegatingCrudResource<SyncFhirRes
     }
 
     @Override
-    public SyncFhirResource save(SyncFhirResource syncFhirResource) {
+    @Secured(privilege = SyncPrivileges.MANAGE_FHIR_RESOURCES)
+    public SyncFhirResource save(SyncFhirResource syncFhirResource) throws ResponseException {
+        // Security handled by @Secured annotation
         return Context.getService(UgandaEMRSyncService.class).saveFHIRResource(syncFhirResource);
     }
 
     @Override
-    public SyncFhirResource getByUniqueId(String uniqueId) {
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_RESOURCES)
+    public SyncFhirResource getByUniqueId(String uniqueId) throws ResponseException {
         SyncFhirResource syncFfhirProfile = null;
         Integer id = null;
 
@@ -62,6 +69,7 @@ public class SyncFhirResourceResource extends DelegatingCrudResource<SyncFhirRes
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_RESOURCES)
     public NeedsPaging<SyncFhirResource> doGetAll(RequestContext context) throws ResponseException {
         return new NeedsPaging<SyncFhirResource>(new ArrayList<SyncFhirResource>(Context.getService(UgandaEMRSyncService.class)
                 .getAllFHirResources()), context);
@@ -215,4 +223,9 @@ public class SyncFhirResourceResource extends DelegatingCrudResource<SyncFhirRes
                 .property("changedBy", new RefProperty("#/definitions/UserGetRef"))
                 .property("voidedBy", new RefProperty("#/definitions/UserGetRef"));
     }
+
+    /**
+     * Helper method to get current method reference for security checks.
+     * Used by ResourceSecurityInterceptor to determine security requirements.
+     */
 }

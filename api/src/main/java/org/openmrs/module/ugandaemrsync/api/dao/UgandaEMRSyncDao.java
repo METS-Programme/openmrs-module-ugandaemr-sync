@@ -10,9 +10,7 @@
 package org.openmrs.module.ugandaemrsync.api.dao;
 
 import org.hibernate.Criteria;
-import org.hibernate.Query;
 import org.hibernate.SQLQuery;
-import org.hibernate.Transaction;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.type.StringType;
@@ -30,10 +28,13 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class UgandaEMRSyncDao {
 
     DbSessionFactory sessionFactory;
+    private static final Logger logger = LoggerFactory.getLogger(UgandaEMRSyncDao.class);
 
     /**
      * @return
@@ -457,7 +458,7 @@ public class UgandaEMRSyncDao {
                 + "' and sfr.date_created >='"+from +"'"+"and sfr.date_created <='"+to +"';" ;
         SQLQuery sqlQuery = getSession()
                 .createSQLQuery(query);
-        System.out.println(query);
+        logger.debug("Executing query: {}", query);
         sqlQuery.addEntity(SyncFhirResource.class);
         return sqlQuery.list();
 

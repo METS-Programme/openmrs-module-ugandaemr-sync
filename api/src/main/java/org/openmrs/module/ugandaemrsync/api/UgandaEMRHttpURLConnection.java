@@ -31,6 +31,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
+import org.openmrs.module.ugandaemrsync.security.SSLConfiguration;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,17 +50,14 @@ import org.openmrs.module.ugandaemrsync.server.SyncConstant;
 import org.openmrs.module.ugandaemrsync.server.SyncGlobalProperties;
 import org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig;
 import org.openmrs.notification.Alert;
-import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.HostnameVerifier;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
-import java.io.InputStream;
+
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -70,14 +68,14 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.Security;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID;
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.GP_FACILITY_NAME;
@@ -91,6 +89,7 @@ public class UgandaEMRHttpURLConnection {
 
     private final Log log = LogFactory.getLog(UgandaEMRHttpURLConnection.class);
     private final StructuredLogger structuredLogger = StructuredLogger.getLogger(UgandaEMRHttpURLConnection.class);
+    private static final Logger logger = LoggerFactory.getLogger(UgandaEMRHttpURLConnection.class);
 
     // Shared HTTP client with connection pooling
     private static volatile CloseableHttpClient pooledHttpClient;
@@ -201,8 +200,8 @@ public class UgandaEMRHttpURLConnection {
             if ((responseCode == CONNECTION_SUCCESS_200 || responseCode == CONNECTION_SUCCESS_201)) {
                 HttpEntity entityResponse = response.getEntity();
                 if (resultType.equals("String")) {
-                    try (InputStream inputStream = entityResponse.getContent()) {
-                        map.put("result", getStringOfResults(inputStream));
+                    try (InputStream inputStreamReader = entityResponse.getContent()) {
+                        map.put("result", getStringOfResults(inputStreamReader));
                     }
                 } else if (resultType.equals("Map")) {
                     map = getMapOfResults(entityResponse, responseCode);
@@ -374,10 +373,10 @@ public class UgandaEMRHttpURLConnection {
             final URL url = new URL(UgandaEMRSyncConfig.CONNECTIVITY_CHECK_URL);
             final URLConnection conn = url.openConnection();
             conn.connect();
-            try (InputStream is = conn.getInputStream()) {
+            try (InputStream inputStream = conn.getInputStream()) {
                 // Read and discard content to check connectivity
                 byte[] buffer = new byte[1024];
-                while (is.read(buffer) > 0) {
+                while (inputStream.read(buffer) > 0) {
                     // Discard data
                 }
             }
@@ -520,19 +519,17 @@ public class UgandaEMRHttpURLConnection {
                         connectionManager.setMaxTotal(20); // Maximum total connections
                         connectionManager.setDefaultMaxPerRoute(10); // Maximum connections per route
 
-                        // Create SSL context that accepts self-signed certificates
-                        SSLContext sslContext = SSLContextBuilder.create()
-                                .loadTrustMaterial(new TrustSelfSignedStrategy())
-                                .build();
+                        // Create SSL context with proper certificate validation
+                        // Uses SSLConfiguration to enforce proper certificate validation in production
+                        // while supporting custom trust stores for development environments
+                        SSLContext sslContext = SSLConfiguration.createSSLContext();
 
-                        // Create hostname verifier that accepts all hosts
-                        HostnameVerifier allowAllHosts = new NoopHostnameVerifier();
-
-                        // Create SSL socket factory
+                        // Use default hostname verification (strict) instead of accepting all hosts
+                        // This prevents man-in-the-middle attacks by verifying hostnames match certificates
                         org.apache.http.conn.ssl.SSLConnectionSocketFactory connectionFactory =
-                                new org.apache.http.conn.ssl.SSLConnectionSocketFactory(sslContext, allowAllHosts);
+                                new org.apache.http.conn.ssl.SSLConnectionSocketFactory(sslContext);
 
-                        // Build the HTTP client with connection pooling
+                        // Build the HTTP client with connection pooling and secure SSL
                         pooledHttpClient = HttpClients.custom()
                                 .setConnectionManager(connectionManager)
                                 .setSSLSocketFactory(connectionFactory)
@@ -570,9 +567,9 @@ public class UgandaEMRHttpURLConnection {
             }
 
         } catch (MalformedURLException ex) {
-            ex.printStackTrace();
+            logger.error("Invalid URL format", ex);
         } catch (IOException ex) {
-            ex.printStackTrace();
+            logger.error("IO exception during connection", ex);
         }
         return null;
     }
@@ -600,7 +597,7 @@ public class UgandaEMRHttpURLConnection {
 
             // Get the response code
             int responseCode = connection.getResponseCode();
-            System.out.println("Response Code: " + responseCode);
+            logger.debug("Response Code: {}", responseCode);
 
             String responseMessage = connection.getResponseMessage();
             //reading the response

@@ -97,6 +97,11 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
+import org.openmrs.module.ugandaemrsync.util.SyncLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID;
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.SYNC_METRIC_DATA;
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.PATIENT_ID_TYPE_UIC_UUID;
@@ -110,6 +115,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     Log log = LogFactory.getLog(UgandaEMRSyncServiceImpl.class);
     private List<Object> unproccesedItems = new ArrayList<>();
     private List<Object> processedItems = new ArrayList<>();
+    private final SyncLogger syncLogger = SyncLogger.getLogger(UgandaEMRSyncServiceImpl.class);
 
     private StockOperation stockOperation = null;
 
@@ -970,7 +976,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
                     return obj;
                 }
             } catch (JSONException e) {
-                log.error(e);
+                log.error("",e);
             }
         }
 
@@ -2724,33 +2730,67 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
 
     @Override
     public Map requestLabResult(Order order, SyncTask syncTask) {
+        final String correlationId = UUID.randomUUID().toString();
+
+        Map<String, Object> logContext = new HashMap<>();
+        logContext.put("correlationId", correlationId);
+        logContext.put("orderUuid", order != null ? order.getUuid() : "null");
+        logContext.put("syncTaskId", syncTask != null ? syncTask.getSyncTask() : "null");
+
+        syncLogger.info("Starting lab result request", logContext);
+
         Map<String, Object> response = new HashMap<>();
         UgandaEMRHttpURLConnection connection = new UgandaEMRHttpURLConnection();
 
         if (!connection.isConnectionAvailable()) {
-            response.put("responseMessage", "No Internet Connection to send order " + safeAccession(order));
+            String message = "No Internet Connection to send order " + safeAccession(order);
+            syncLogger.logValidationError("connectionCheck", safeAccession(order), message);
+            response.put("responseMessage", message);
             return response;
         }
 
-        order = resolveOrder(order, syncTask, response);
-        if (order == null) {
+        Order resolvedOrder = resolveOrder(order, syncTask, response);
+        if (resolvedOrder == null) {
+            syncLogger.logValidationError("orderResolution", "null", "Failed to resolve order from sync task");
             return response;
         }
 
-        Map<String, String> requestPayload = buildRequestPayload(order, syncTask);
+        Map<String, String> requestPayload = buildRequestPayload(resolvedOrder, syncTask);
         if (requestPayload == null) {
-            response.put("responseMessage", "Failed to generate request payload");
+            String message = "Failed to generate request payload";
+            syncLogger.logValidationError("payloadGeneration", resolvedOrder.getAccessionNumber(), message);
+            response.put("responseMessage", message);
             return response;
         }
 
         SyncTaskType syncTaskType = getSyncTaskTypeByUUID(VIRAL_LOAD_RESULT_PULL_TYPE_UUID);
-        Map<String, Object> results = sendRequest(connection, syncTaskType, requestPayload, order, response);
 
-        if (results.isEmpty()) {
-            return response;
+        try {
+            // Use circuit breaker and retry logic for external API call
+            Map<String, Object> results = connection.executeWithCircuitBreaker(
+                    "CPHL",
+                    syncTaskType.getUrl(),
+                    () -> sendRequestWithRetry(connection, syncTaskType, requestPayload, resolvedOrder, correlationId, syncLogger)
+            );
+
+            if (results.isEmpty()) {
+                syncLogger.logValidationError("emptyResponse", resolvedOrder.getAccessionNumber(), "External service returned empty response");
+                return response;
+            }
+
+            processResults(results, resolvedOrder, syncTask, syncTaskType, response);
+
+            Map<String, Object> successContext = new HashMap<>();
+            successContext.put("correlationId", correlationId);
+            successContext.put("accessionNumber", resolvedOrder.getAccessionNumber());
+            syncLogger.info("Lab result request completed successfully", successContext);
+
+        } catch (Exception e) {
+            String message = String.format("Failed to request lab result: %s", e.getMessage());
+            syncLogger.logValidationError("externalServiceCall", resolvedOrder.getAccessionNumber(), message);
+            response.put("responseMessage", message);
         }
 
-        processResults(results, order, syncTask, syncTaskType, response);
         return response;
     }
 
@@ -2822,6 +2862,66 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         }
 
         return Collections.emptyMap();
+    }
+
+    /**
+     * Enhanced request method with retry logic and circuit breaker protection
+     * Uses the new infrastructure improvements for better resilience.
+     */
+    private Map<String, Object> sendRequestWithRetry(UgandaEMRHttpURLConnection connection,
+                                                      SyncTaskType syncTaskType,
+                                                      Map<String, String> payload,
+                                                      Order order,
+                                                      String correlationId,
+                                                      SyncLogger logger) throws Exception {
+
+        Map<String, Object> logContext = new HashMap<>();
+        logContext.put("correlationId", correlationId);
+        logContext.put("url", syncTaskType.getUrl());
+        logContext.put("accessionNumber", safeAccession(order));
+
+        syncLogger.info("Starting external API call with retry logic", logContext);
+
+        try {
+            // Use the new sendPostWithRetry method which includes retry logic and better error handling
+            Map<String, Object> result = connection.sendPostWithRetry(
+                    syncTaskType.getUrl(),
+                    payload.get("json").toString(),
+                    syncTaskType.getUrlUserName(),
+                    syncTaskType.getUrlPassword(),
+                    "application/json",
+                    "requestLabResult"
+            );
+
+            Map<String, Object> successContext = new HashMap<>();
+            successContext.put("correlationId", correlationId);
+            successContext.put("responseCode", result.get("responseCode"));
+            successContext.put("accessionNumber", safeAccession(order));
+
+            syncLogger.info("External API call successful", successContext);
+
+            return result;
+
+        } catch (Exception e) {
+            Map<String, Object> errorContext = new HashMap<>();
+            errorContext.put("url", syncTaskType.getUrl());
+            errorContext.put("accessionNumber", safeAccession(order));
+
+            syncLogger.logValidationError("externalAPI", errorContext,
+                    String.format("External API call failed: %s", e.getMessage()));
+
+            // Log transaction for failure
+            logTransaction(syncTaskType, 500, e.getMessage(),
+                          safeAccession(order), e.getMessage(),
+                          new Date(), syncTaskType.getUrl(), false, false);
+
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE,
+                    String.format("Failed to call external service for order %s: %s",
+                                safeAccession(order), e.getMessage()),
+                    e
+            );
+        }
     }
 
     private void processResults(Map<String, Object> results, Order order, SyncTask syncTask, SyncTaskType syncTaskType, Map<String, Object> response) {

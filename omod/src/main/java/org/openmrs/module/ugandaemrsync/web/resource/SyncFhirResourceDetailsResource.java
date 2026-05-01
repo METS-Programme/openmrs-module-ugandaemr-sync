@@ -11,10 +11,13 @@ import org.openmrs.module.reporting.common.DateUtil;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirProfile;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirResource;
-import org.openmrs.module.ugandaemrsync.model.SyncFhirResource;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.ugandaemrsync.web.resource.DTO.FhirResourceDetails;
 import org.openmrs.module.ugandaemrsync.web.resource.mapper.ConverterHelper;
 import org.openmrs.module.webservices.rest.SimpleObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
@@ -35,7 +38,9 @@ import java.util.Date;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncfhirresourcedetails", supportedClass = SyncFhirResource.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncFhirResourceDetailsResource extends DelegatingCrudResource<SyncFhirResource> {
+    private static final Logger logger = LoggerFactory.getLogger(SyncFhirResourceDetailsResource.class);
 
 	@Override
 	public SyncFhirResource newDelegate() {
@@ -119,6 +124,7 @@ public class SyncFhirResourceDetailsResource extends DelegatingCrudResource<Sync
 	}
 
 	@Override
+	@Secured(privilege = SyncPrivileges.VIEW_FHIR_RESOURCES)
 	protected PageableResult doSearch(RequestContext context) {
 		UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
 
@@ -148,7 +154,7 @@ public class SyncFhirResourceDetailsResource extends DelegatingCrudResource<Sync
 			} catch (Exception ex) {
 			}
 		}
-		System.out.println("size of sync resources"+ SyncFhirResourcesByQuery.size());
+		logger.debug("Size of sync resources: {}", SyncFhirResourcesByQuery.size());
 		List<FhirResourceDetails> fhirResourceDetails = new ArrayList<>();
 		if(!SyncFhirResourcesByQuery.isEmpty()){
 			fhirResourceDetails = ConverterHelper.convertSyncFhirResources(SyncFhirResourcesByQuery);

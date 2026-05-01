@@ -2,6 +2,8 @@ package org.openmrs.module.ugandaemrsync.tasks;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.openmrs.Cohort;
@@ -50,6 +52,7 @@ import static org.openmrs.module.ugandaemrsync.server.SyncConstant.SMS_APPOINTME
 public class SendSMSAppointmentTask extends AbstractTask {
 
     protected Log log = LogFactory.getLog(getClass());
+    private static final Logger logger = LoggerFactory.getLogger(SendSMSAppointmentTask.class);
 
     UgandaEMRHttpURLConnection ugandaEMRHttpURLConnection = new UgandaEMRHttpURLConnection();
     SyncGlobalProperties syncGlobalProperties = new SyncGlobalProperties();
@@ -77,9 +80,8 @@ public class SendSMSAppointmentTask extends AbstractTask {
                 gpSubmissionDate = new SimpleDateFormat("yyyy-MM-dd").parse(strSubmissionDate);
             }
             catch (ParseException e) {
-                log.info("Error parsing last successful submission date " + strSubmissionDate + e);
-                e.printStackTrace();
-                log.error(e);
+                log.info("Error parsing last successful submission date " + strSubmissionDate, e);
+                logger.warn("Failed to parse submission date: {}", strSubmissionDate, e);
             }
 
             long diff = todayDate.getTime() - gpSubmissionDate.getTime();
@@ -173,7 +175,7 @@ public class SendSMSAppointmentTask extends AbstractTask {
             renderingMode.getRenderer().render(reportData, renderingMode.getArgument(), fileOutputStream);
 
             strOutput = this.readOutputFile(strOutput);
-            System.out.println(strOutput);
+            logger.debug("SMS Appointment output: {}", strOutput);
         }
         catch (Exception e) {
             log.info("Error rendering the contents of the Recency data export report to"

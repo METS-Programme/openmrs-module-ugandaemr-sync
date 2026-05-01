@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <!-- Add comprehensive error tracking columns to sync_fhir_resource table -->
+    <changeSet id="ugandaemrsync-add-sync-error-tracking-columns-2024-05-01" author="samuel">
+        <comment>Add comprehensive error tracking columns to sync_fhir_resource table</comment>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="last_sync_attempt" type="datetime">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="consecutive_failure_count" type="int" defaultValue="0">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="last_sync_error_type" type="varchar(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="last_sync_error_message" type="varchar(1000)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="sync_retry_count" type="int" defaultValue="0">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_resource">
+            <column name="last_successful_sync_date" type="datetime">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Create index on last_sync_attempt for efficient querying of resources that need retry -->
+        <createIndex tableName="sync_fhir_resource" indexName="idx_last_sync_attempt">
+            <column name="last_sync_attempt"/>
+        </createIndex>
+
+        <!-- Create index on consecutive_failure_count to identify problematic resources -->
+        <createIndex tableName="sync_fhir_resource" indexName="idx_consecutive_failures">
+            <column name="consecutive_failure_count"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="sync_fhir_resource" indexName="idx_consecutive_failures"/>
+            <dropIndex tableName="sync_fhir_resource" indexName="idx_last_sync_attempt"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="last_successful_sync_date"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="sync_retry_count"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="last_sync_error_message"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="last_sync_error_type"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="consecutive_failure_count"/>
+            <dropColumn tableName="sync_fhir_resource" columnName="last_sync_attempt"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

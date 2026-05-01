@@ -18,18 +18,25 @@ import org.openmrs.module.webservices.rest.web.representation.FullRepresentation
 import org.openmrs.module.webservices.rest.web.representation.RefRepresentation;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.ugandaemrsync.web.interceptor.ResourceSecurityInterceptor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncfhirprofile", supportedClass = SyncFhirProfile.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncFhirProfileResource extends DelegatingCrudResource<SyncFhirProfile> {
+    private static final Logger logger = LoggerFactory.getLogger(SyncFhirProfileResource.class);
 
 	@Override
 	public SyncFhirProfile newDelegate() {
@@ -37,12 +44,15 @@ public class SyncFhirProfileResource extends DelegatingCrudResource<SyncFhirProf
 	}
 
 	@Override
-	public SyncFhirProfile save(SyncFhirProfile SyncFhirProfile) {
+	@Secured(privilege = SyncPrivileges.MANAGE_FHIR_PROFILES)
+	public SyncFhirProfile save(SyncFhirProfile SyncFhirProfile) throws ResponseException {
+		// Security handled by @Secured annotation
 		return Context.getService(UgandaEMRSyncService.class).saveSyncFhirProfile(SyncFhirProfile);
 	}
 
 	@Override
-	public SyncFhirProfile getByUniqueId(String uniqueId) {
+	@Secured(privilege = SyncPrivileges.VIEW_FHIR_PROFILES)
+	public SyncFhirProfile getByUniqueId(String uniqueId) throws ResponseException {
 		SyncFhirProfile syncFfhirProfile = null;
 		Integer id = null;
 
@@ -51,7 +61,9 @@ public class SyncFhirProfileResource extends DelegatingCrudResource<SyncFhirProf
 			try {
 				id = Integer.parseInt(uniqueId);
 			}
-			catch (Exception e) {}
+			catch (Exception e) {
+				logger.warn("Failed to parse uniqueId as integer: {}", uniqueId, e);
+			}
 
 			if (id != null) {
 				syncFfhirProfile = Context.getService(UgandaEMRSyncService.class).getSyncFhirProfileById(id);

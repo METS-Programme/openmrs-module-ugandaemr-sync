@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <!-- Add comprehensive error tracking columns to sync_fhir_case table -->
+    <changeSet id="ugandaemrsync-add-case-generation-tracking-columns-2024-05-01" author="samuel">
+        <comment>Add comprehensive error tracking columns to sync_fhir_case table for case-based FHIR resource generation</comment>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="last_generation_attempt" type="datetime">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="consecutive_generation_failures" type="int" defaultValue="0">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="last_generation_error_type" type="varchar(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="last_generation_error_message" type="varchar(1000)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="total_generation_attempts" type="int" defaultValue="0">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="last_successful_generation_date" type="datetime">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sync_fhir_case">
+            <column name="resource_generation_status" type="varchar(20)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Create index on last_generation_attempt for efficient querying of cases that need retry -->
+        <createIndex tableName="sync_fhir_case" indexName="idx_case_last_generation_attempt">
+            <column name="last_generation_attempt"/>
+        </createIndex>
+
+        <!-- Create index on consecutive_generation_failures to identify problematic cases -->
+        <createIndex tableName="sync_fhir_case" indexName="idx_case_consecutive_failures">
+            <column name="consecutive_generation_failures"/>
+        </createIndex>
+
+        <!-- Create index on resource_generation_status for filtering by status -->
+        <createIndex tableName="sync_fhir_case" indexName="idx_case_generation_status">
+            <column name="resource_generation_status"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex tableName="sync_fhir_case" indexName="idx_case_generation_status"/>
+            <dropIndex tableName="sync_fhir_case" indexName="idx_case_consecutive_failures"/>
+            <dropIndex tableName="sync_fhir_case" indexName="idx_case_last_generation_attempt"/>
+            <dropColumn tableName="sync_fhir_case" columnName="resource_generation_status"/>
+            <dropColumn tableName="sync_fhir_case" columnName="last_successful_generation_date"/>
+            <dropColumn tableName="sync_fhir_case" columnName="total_generation_attempts"/>
+            <dropColumn tableName="sync_fhir_case" columnName="last_generation_error_message"/>
+            <dropColumn tableName="sync_fhir_case" columnName="last_generation_error_type"/>
+            <dropColumn tableName="sync_fhir_case" columnName="consecutive_generation_failures"/>
+            <dropColumn tableName="sync_fhir_case" columnName="last_generation_attempt"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

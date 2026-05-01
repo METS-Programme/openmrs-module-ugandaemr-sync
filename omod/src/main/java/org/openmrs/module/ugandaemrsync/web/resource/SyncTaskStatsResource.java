@@ -2,20 +2,22 @@ package org.openmrs.module.ugandaemrsync.web.resource;
 
 import org.openmrs.api.APIAuthenticationException;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.reporting.common.DateUtil;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.reporting.common.DateUtil;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -30,6 +32,7 @@ public class SyncTaskStatsResource {
     @ExceptionHandler(APIAuthenticationException.class)
     @RequestMapping(method = RequestMethod.GET)
     @ResponseBody
+    @Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
     public Object getSyncTaskLogsByType(@RequestParam String startDate, @RequestParam String endDate,
                                         @RequestParam(required = true, value = "type") String type) {
         List<SyncTask> syncTasks = new ArrayList<>();

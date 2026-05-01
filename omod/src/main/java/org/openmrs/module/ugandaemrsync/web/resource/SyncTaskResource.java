@@ -24,6 +24,9 @@ import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceD
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.ugandaemrsync.web.interceptor.ResourceSecurityInterceptor;
 
 import javax.persistence.Column;
 import javax.persistence.JoinColumn;
@@ -34,6 +37,7 @@ import java.util.Date;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/synctask", supportedClass = SyncTask.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncTaskResource extends DelegatingCrudResource<SyncTask> {
 
     @Override
@@ -42,12 +46,14 @@ public class SyncTaskResource extends DelegatingCrudResource<SyncTask> {
     }
 
     @Override
-    public SyncTask save(SyncTask SyncTask) {
+    @Secured(privilege = SyncPrivileges.MANAGE_SYNC_TASKS)
+    public SyncTask save(SyncTask SyncTask) throws ResponseException {
         return Context.getService(UgandaEMRSyncService.class).saveSyncTask(SyncTask);
     }
 
     @Override
-    public SyncTask getByUniqueId(String uniqueId) {
+    @Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
+    public SyncTask getByUniqueId(String uniqueId) throws ResponseException {
         SyncTask SyncTask = null;
         Integer id = null;
 
@@ -77,6 +83,7 @@ public class SyncTaskResource extends DelegatingCrudResource<SyncTask> {
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
     public NeedsPaging<SyncTask> doGetAll(RequestContext context) throws ResponseException {
         return new NeedsPaging<SyncTask>(new ArrayList<SyncTask>(Context.getService(UgandaEMRSyncService.class)
                 .getAllSyncTask()), context);

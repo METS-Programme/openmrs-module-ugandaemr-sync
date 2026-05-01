@@ -2,6 +2,8 @@ package org.openmrs.module.ugandaemrsync.tasks;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openmrs.EncounterType;
@@ -46,6 +48,7 @@ import static org.openmrs.module.ugandaemrsync.server.SyncConstant.ART_ACCESS_PU
 
 public class ReceiveVisitsDataFromARTAccessTask extends AbstractTask {
     protected final Log log = LogFactory.getLog(ReceiveVisitsDataFromARTAccessTask.class);
+    private static final Logger logger = LoggerFactory.getLogger(ReceiveVisitsDataFromARTAccessTask.class);
 
     SyncGlobalProperties syncGlobalProperties;
     UgandaEMRSyncService ugandaEMRSyncService;
@@ -123,7 +126,7 @@ public class ReceiveVisitsDataFromARTAccessTask extends AbstractTask {
     public String addParametersToUrl(String url) {
         String uuid  = syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID);
         String lastSyncDate = syncGlobalProperties.getGlobalProperty(GP_ART_ACCESS_LAST_SYNC_DATE);
-        System.out.println(lastSyncDate+"last sync date");
+        logger.debug("Last sync date: {}", lastSyncDate);
         String uuidParameter  = "&managingOrganisation="+uuid;
         String startDateParameter ="";
         LocalDate today = LocalDate.now();
@@ -154,7 +157,7 @@ public class ReceiveVisitsDataFromARTAccessTask extends AbstractTask {
            String patientARTNo = getIdentifier(patientAttributes);
            Patient patient = ugandaEMRSyncService.getPatientByPatientIdentifier(patientARTNo);
            if(patient!=null){
-               System.out.println(patientARTNo);
+               logger.debug("Processing patient with ART number: {}", patientARTNo);
                 processPatientBundle(patientEncounterDetails,patient,no_of_days,no_of_pills);
            }
 
@@ -181,7 +184,9 @@ public class ReceiveVisitsDataFromARTAccessTask extends AbstractTask {
            try{ Date return_date = ugandaEMRSyncService.convertStringToDate(next_visit_date, "00:00:00", ugandaEMRSyncService.getDateFormat(next_visit_date));
             if(next_visit_date!=""&&next_visit_date!=null) {
                 addObs(obsList, next_visit_date, conceptService.getConcept((int) conceptsCaptured.get("next_visit_date")), null, return_date, null, patient, user, startVisitDate);
-            }}catch (Exception e){e.printStackTrace();}
+            }}catch (Exception e){
+                logger.warn("Failed to process next visit date: {}", next_visit_date, e);
+            }
 
             String adherence = getJSONObjectValue(jsonObject.getJSONObject("4"),"adherence");
             Concept adherence_concept = conceptService.getConcept((int)conceptsCaptured.get("adherence"));
@@ -257,7 +262,7 @@ public class ReceiveVisitsDataFromARTAccessTask extends AbstractTask {
 //        String other_drugs = getJSONObjectValue(jsonObject.getJSONObject("13"),"other_drugs");
 //        String next_facility_visit = getJSONObjectValue(jsonObject.getJSONObject("14"),"next_facility_visit");
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            logger.error("Error processing patient attributes", e);
         }
     }
 

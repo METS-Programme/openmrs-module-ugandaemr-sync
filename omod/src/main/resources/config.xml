@@ -67,6 +67,107 @@
     </privilege>
      /Required Privileges -->
 
+    <!-- UgandaEMR Sync Module Privileges -->
+    <privilege>
+        <name>UgandaemrSync: View Sync Tasks</name>
+        <description>Allows viewing sync task history and status. Users can see sync task information but cannot create or modify tasks.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Sync Tasks</name>
+        <description>Allows creating and managing sync tasks. Users can create, update, and delete sync tasks. This should be granted to system administrators and data managers.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Sync Task Types</name>
+        <description>Allows viewing sync task type configurations. Users can see task type definitions and settings.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Sync Task Types</name>
+        <description>Allows managing sync task type configurations. Users can create and modify sync task types. This should be granted to system administrators only.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View FHIR Resources</name>
+        <description>Allows viewing FHIR sync resources. Users can see FHIR resources but cannot modify them.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage FHIR Resources</name>
+        <description>Allows managing FHIR sync resources. Users can create, update, and delete FHIR resources. This should be granted to data managers and system administrators.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View FHIR Profiles</name>
+        <description>Allows viewing FHIR profile configurations. Users can see FHIR profile settings and mappings.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage FHIR Profiles</name>
+        <description>Allows managing FHIR profile configurations. Users can create and modify FHIR profiles. This should be granted to system administrators only.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View FHIR Cases</name>
+        <description>Allows viewing FHIR case-based profiles. Users can see FHIR case resources but cannot modify them. This should be granted to clinicians and data managers.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage FHIR Cases</name>
+        <description>Allows managing FHIR case-based profiles. Users can create, update, and delete FHIR case resources. This should be granted to data managers and system administrators.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Lab Results</name>
+        <description>Allows viewing lab results from external systems. Users can view laboratory results but cannot modify them. This should be granted to clinicians, nurses, and lab staff.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Lab Results</name>
+        <description>Allows managing lab results from external systems. Users can import, update, and delete lab results. This should be granted to lab staff and data managers.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Lab Orders</name>
+        <description>Allows sending lab orders to external systems like CPHL. Users can create and send viral load orders. This should be granted to clinicians and lab staff.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Referrals</name>
+        <description>Allows viewing referral information. Users can see referral details but cannot modify them. This should be granted to clinicians and nursing staff.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Referrals</name>
+        <description>Allows managing referral information. Users can create, update, and delete referrals. This should be granted to clinicians and referral coordinators.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Referral Orders</name>
+        <description>Allows viewing referral orders for CPHL. Users can see referral orders but cannot modify them. This should be granted to clinicians and nursing staff.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Reports</name>
+        <description>Allows viewing sync reports and statistics. Users can access reports about sync operations and statistics. This should be granted to managers and supervisors.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Send Reports</name>
+        <description>Allows sending reports to external systems. Users can trigger report generation and transmission. This should be granted to data managers and system administrators.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: View Sync Statistics</name>
+        <description>Allows viewing sync statistics and metrics. Users can access detailed statistics about sync operations. This should be granted to managers and technical staff.</description>
+    </privilege>
+
+    <privilege>
+        <name>UgandaemrSync: Manage Sync Configuration</name>
+        <description>Allows managing sync module configuration. Users can modify global properties and system settings. This privilege should be granted to system administrators only.</description>
+    </privilege>
+
 
     <!-- Required Global Properties-->
     <globalProperty>
@@ -177,6 +278,36 @@
         <property>ugandaemrsync.sendHMISReports.server.url</property>
         <defaultValue>https://ugisl.mets.or.ug/ehmis</defaultValue>
         <description> </description>
+    </globalProperty>
+
+    <!-- SSL/TLS Security Configuration -->
+    <globalProperty>
+        <property>ugandaemrsync.ssl.developmentMode</property>
+        <defaultValue>false</defaultValue>
+        <description>
+            Enable development mode for SSL/TLS connections. When set to true, allows self-signed certificates
+            using a custom trust store. MUST be set to false in production environments to ensure proper
+            certificate validation and prevent man-in-the-middle attacks.
+        </description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>ugandaemrsync.ssl.trustStore.path</property>
+        <defaultValue></defaultValue>
+        <description>
+            Path to custom trust store file (JKS format) for self-signed certificates in development environments.
+            Leave empty in production. Used only when ugandaemrsync.ssl.developmentMode is true.
+            Example: /etc/ssl/certs/custom-truststore.jks
+        </description>
+    </globalProperty>
+
+    <globalProperty>
+        <property>ugandaemrsync.ssl.trustStore.password</property>
+        <defaultValue>changeit</defaultValue>
+        <description>
+            Password for the custom trust store. Used only when ugandaemrsync.ssl.developmentMode is true
+            and ugandaemrsync.ssl.trustStore.path is specified.
+        </description>
     </globalProperty>
 
     <!--

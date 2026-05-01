@@ -18,15 +18,22 @@ import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.ugandaemrsync.web.interceptor.ResourceSecurityInterceptor;
 import org.openmrs.module.webservices.validation.ValidateUtil;
 
 import java.util.Arrays;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/diagnosisreport", supportedClass = TestResultDTO.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class RecieveLabResultResource extends DelegatingCrudResource<TestResultDTO> {
+    private static final Logger logger = LoggerFactory.getLogger(RecieveLabResultResource.class);
 
     @Override
     public TestResultDTO newDelegate() {
@@ -34,11 +41,13 @@ public class RecieveLabResultResource extends DelegatingCrudResource<TestResultD
     }
 
     @Override
-    public TestResultDTO save(TestResultDTO TestResult) {
+    @Secured(privilege = SyncPrivileges.MANAGE_LAB_RESULTS, rateLimit = 100)
+    public TestResultDTO save(TestResultDTO TestResult) throws ResponseException {
         throw new ResourceDoesNotSupportOperationException("Operation not supported");
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.MANAGE_LAB_RESULTS, rateLimit = 100)
     public Object create(SimpleObject propertiesToCreate, RequestContext context) throws ResponseException {
 
         List<Encounter> encounters = Context.getService(UgandaEMRSyncService.class).addTestResultsToEncounter(propertiesToCreate.toString(), null);
@@ -60,7 +69,7 @@ public class RecieveLabResultResource extends DelegatingCrudResource<TestResultD
                     message += " (Partial results - some orders still pending)";
                 }
 
-                System.out.println(String.format("Encounter result processing: %s", message));
+                logger.debug("Encounter result processing: {}", message);
             }
         }
 
@@ -147,4 +156,5 @@ public class RecieveLabResultResource extends DelegatingCrudResource<TestResultD
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
         throw new ResourceDoesNotSupportOperationException("Operation not supported");
     }
+
 }
