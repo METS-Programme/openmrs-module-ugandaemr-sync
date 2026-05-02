@@ -12,7 +12,7 @@ The UgandaEMR Sync Module provides comprehensive data sharing and health informa
 
 - **FHIR-based Data Exchange**: HL7 FHIR R4 standard for healthcare data interoperability
 - **Multi-system Integration**: Connect with DHIS2, central servers, lab systems, and other HIEs
-- **National DWH **: Advanced disease surveillance and reporting capabilities
+- **National DWH**: Advanced disease surveillance and reporting capabilities
 - **Resource-based Sync**: Flexible FHIR resource synchronization profiles
 - **Bi-directional Communication**: Send data to and receive data from external systems
 - **Secure & Reliable**: Enterprise-grade security with circuit breaker patterns and retry mechanisms
