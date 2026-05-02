@@ -20,8 +20,23 @@ import java.util.List;
  * This single task can execute multiple FHIR profiles based on database configuration,
  * eliminating the need to create a separate task class for each profile.
  *
+ * <p><b>Hybrid Architecture:</b></p>
+ * <ul>
+ *   <li><b>Standard Profiles:</b> Executed by this generic scheduler (custom_task_class is NULL)</li>
+ *   <li><b>Custom Profiles:</b> Executed by dedicated task classes (custom_task_class is specified)</li>
+ * </ul>
+ *
+ * <p><b>How It Works:</b></p>
+ * <ol>
+ *   <li>Scans all enabled FHIR profiles from database</li>
+ *   <li>Skips profiles with custom_task_class assigned (managed by their own tasks)</li>
+ *   <li>Executes profiles without custom_task_class using this generic scheduler</li>
+ *   <li>Applies priority-based execution, retry logic, and timeout handling</li>
+ * </ol>
+ *
  * Features:
  * - Database-driven configuration
+ * - Hybrid execution model (generic + custom tasks)
  * - Automatic retry logic
  * - Timeout handling
  * - Comprehensive execution tracking
@@ -29,9 +44,10 @@ import java.util.List;
  * - Priority-based execution
  *
  * Usage:
- * 1. Create one scheduled task using this class
+ * 1. Create one scheduled task using this class for generic execution
  * 2. Configure profiles through database/UI
- * 3. No need for individual task classes per profile
+ * 3. For specialized profiles, create custom task classes and assign them via custom_task_class
+ * 4. Most profiles need no individual task classes
  */
 public class GenericFhirProfileSchedulerTask extends AbstractTask {
 
@@ -83,6 +99,15 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
      * Determine if a profile should be executed based on its configuration
      */
     private boolean shouldExecuteProfile(SyncFhirProfile profile) {
+        // CRITICAL: Check if this profile has a custom task class assigned
+        // Profiles with custom task classes are managed by their own dedicated tasks,
+        // not by the generic scheduler
+        if (profile.getCustomTaskClass() != null && !profile.getCustomTaskClass().trim().isEmpty()) {
+            log.debug("Profile " + profile.getName() + " has custom task class: " + profile.getCustomTaskClass() +
+                     ". Skipping execution in generic scheduler - handled by dedicated task.");
+            return false;
+        }
+
         // Check if schedule is configured and enabled
         if (profile.getScheduleEnabled() != null && !profile.getScheduleEnabled()) {
             return false;

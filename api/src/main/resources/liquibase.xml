@@ -2095,4 +2095,7 @@
     <!-- Include scheduler task configuration -->
     <include file="liquibase/changelogs/20240502-add-generic-fhir-profile-scheduler-task.xml" relativeToChangelogFile="false"/>
 
+    <!-- Include custom task class configuration -->
+    <include file="liquibase/changelogs/20240502-add-custom-task-class-to-profile.xml" relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

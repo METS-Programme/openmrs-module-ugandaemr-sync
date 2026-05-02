@@ -347,6 +347,9 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
     @Column(name = "max_retry_attempts")
     private Integer maxRetryAttempts = 3;
 
+    @Column(name = "custom_task_class", length = 255)
+    private String customTaskClass; // Fully qualified class name of custom task to run this profile
+
     @Column(name = "retry_interval")
     private Long retryInterval = 60000L; // 1 minute default
 
@@ -498,6 +501,15 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
 
     public void setExecutionPriority(Integer executionPriority) {
         this.executionPriority = executionPriority;
+    }
+
+    // Custom Task Configuration
+    public String getCustomTaskClass() {
+        return customTaskClass;
+    }
+
+    public void setCustomTaskClass(String customTaskClass) {
+        this.customTaskClass = customTaskClass;
     }
 
     public String getTaskName() {

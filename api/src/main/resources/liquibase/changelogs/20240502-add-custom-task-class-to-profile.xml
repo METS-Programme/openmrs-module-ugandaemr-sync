@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+                  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <!-- Add custom_task_class column to sync_fhir_profile table -->
+    <changeSet id="ugandaemrsync-add-custom-task-class-to-profile-2024-05-02" author="samuel">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sync_fhir_profile"/>
+            <not>
+                <columnExists tableName="sync_fhir_profile" columnName="custom_task_class"/>
+            </not>
+        </preConditions>
+
+        <comment>
+            Add custom_task_class column to sync_fhir_profile table.
+            This allows profiles to specify custom task classes for specialized execution logic.
+            If left NULL, the profile will be executed by the GenericFhirProfileSchedulerTask.
+        </comment>
+
+        <addColumn tableName="sync_fhir_profile">
+            <column name="custom_task_class" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="sync_fhir_profile" columnName="custom_task_class"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
