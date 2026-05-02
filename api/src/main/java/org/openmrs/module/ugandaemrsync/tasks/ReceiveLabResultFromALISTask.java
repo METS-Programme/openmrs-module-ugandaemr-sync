@@ -8,7 +8,9 @@ import org.openmrs.api.OrderService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRHttpURLConnection;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
+import org.openmrs.module.ugandaemrsync.validation.ValidationUtils;
 import org.openmrs.scheduler.tasks.AbstractTask;
 
 import java.util.Map;
@@ -35,7 +37,14 @@ public class ReceiveLabResultFromALISTask extends AbstractTask {
 
         for (SyncTask syncTask : ugandaEMRSyncService.getIncompleteActionSyncTask(LAB_RESULT_PULL_SYNC_TASK_TYPE_UUID)) {
 
-            Order order = getOrder(syncTask.getSyncTask());
+            Order order;
+            try {
+                order = getOrder(syncTask.getSyncTask());
+            } catch (UgandaEMRSyncException e) {
+                log.error("Failed to get order for syncTask: " + syncTask.getSyncTask(), e);
+                continue;
+            }
+
             Map results = new HashMap();
 
             // Fetch lab results for the order
@@ -66,9 +75,21 @@ public class ReceiveLabResultFromALISTask extends AbstractTask {
         }
     }
 
-    public Order getOrder(String orderNumber) {
+    public Order getOrder(String orderNumber) throws UgandaEMRSyncException {
+        // Validate order number to prevent SQL injection
+        ValidationUtils.requireNotEmpty("orderNumber", orderNumber);
+        ValidationUtils.requireLength("orderNumber", orderNumber, 1, 255);
+        ValidationUtils.requireNoSQLInjection("orderNumber", orderNumber);
+
         OrderService orderService = Context.getOrderService();
-        List list = Context.getAdministrationService().executeSQL(String.format(LAB_ORDER_QUERY, orderNumber), true);
+
+        // Use parameterized query to prevent SQL injection
+        org.hibernate.SQLQuery sqlQuery = Context.getRegisteredComponent("sessionFactory", org.hibernate.SessionFactory.class)
+                .getCurrentSession()
+                .createSQLQuery(LAB_ORDER_QUERY);
+        sqlQuery.setParameter("orderNumber", orderNumber);
+
+        List list = sqlQuery.list();
         if (list.size() > 0) {
             for (Object o : list) {
                 return orderService.getOrder(Integer.parseUnsignedInt(((ArrayList) o).get(0).toString()));

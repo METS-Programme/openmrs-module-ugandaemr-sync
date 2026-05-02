@@ -196,7 +196,11 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
      */
     @Override
     public List<SyncTask> getIncompleteActionSyncTask(String syncTaskTypeUuid) throws APIException {
-        return dao.getIncompleteActionSyncTask(syncTaskTypeUuid);
+        try {
+            return dao.getIncompleteActionSyncTask(syncTaskTypeUuid);
+        } catch (UgandaEMRSyncException e) {
+            throw new APIException("Validation error in getIncompleteActionSyncTask: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -1393,7 +1397,11 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
 
     @Override
     public List<SyncFhirResource> getSyncFHIRResourceBySyncFhirProfile(SyncFhirProfile syncFhirProfile, String synceDateFrom, String synceDateTo) {
-        return dao.getSyncResourceBySyncFhirProfile(syncFhirProfile, synceDateFrom, synceDateTo);
+        try {
+            return dao.getSyncResourceBySyncFhirProfile(syncFhirProfile, synceDateFrom, synceDateTo);
+        } catch (UgandaEMRSyncException e) {
+            throw new APIException("Validation error in getSyncFHIRResourceBySyncFhirProfile: " + e.getMessage(), e);
+        }
     }
 
     public List<SyncTask> getSyncTasksByType(SyncTaskType syncTaskType) {
@@ -1406,7 +1414,11 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
 
     @Override
     public void deleteSyncTask(String syncTask, SyncTaskType syncTaskType) {
-        dao.deleteUnSuccessfulSyncTasks(syncTask, syncTaskType);
+        try {
+            dao.deleteUnSuccessfulSyncTasks(syncTask, syncTaskType);
+        } catch (UgandaEMRSyncException e) {
+            throw new APIException("Validation error in deleteSyncTask: " + e.getMessage(), e);
+        }
     }
 
 
