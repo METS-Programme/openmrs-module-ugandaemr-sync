@@ -3909,6 +3909,162 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     public List<org.openmrs.Order> getOrdersByIds(List<Integer> orderIds) {
         return dao.getOrdersByIds(orderIds);
     }
+
+    // ===========================
+    // FHIR PROFILE SCHEDULING METHODS
+    // ===========================
+
+    @Override
+    public List<SyncFhirProfile> getScheduledProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> scheduledProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (profile.getScheduleEnabled() != null && profile.getScheduleEnabled()) {
+                scheduledProfiles.add(profile);
+            }
+        }
+        return scheduledProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getProfilesByScheduleType(String scheduleType) {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> matchingProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (scheduleType.equals(profile.getScheduleType())) {
+                matchingProfiles.add(profile);
+            }
+        }
+        return matchingProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getProfilesByTaskGroup(String taskGroup) {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> matchingProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (taskGroup.equals(profile.getTaskGroup())) {
+                matchingProfiles.add(profile);
+            }
+        }
+        return matchingProfiles;
+    }
+
+    @Override
+    public void executeProfile(Integer profileId) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void executeProfileByName(String profileName) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void executeProfilesByGroup(String groupName) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void enableProfileSchedule(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            profile.setScheduleEnabled(true);
+            saveSyncFhirProfile(profile);
+        }
+    }
+
+    @Override
+    public void disableProfileSchedule(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            profile.setScheduleEnabled(false);
+            saveSyncFhirProfile(profile);
+        }
+    }
+
+    @Override
+    public List<SyncFhirProfile> getRunningProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> runningProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if ("RUNNING".equals(profile.getLastExecutionStatus())) {
+                runningProfiles.add(profile);
+            }
+        }
+        return runningProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getFailedProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> failedProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if ("FAILED".equals(profile.getLastExecutionStatus())) {
+                failedProfiles.add(profile);
+            }
+        }
+        return failedProfiles;
+    }
+
+    // ===========================
+    // EXECUTION HISTORY METHODS
+    // ===========================
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionHistoryByProfile(profile);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId, int limit, int offset) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionHistoryByProfile(profile, limit, offset);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getRecentExecutions(int limit) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.getRecentExecutions(limit);
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getFailedExecutions(int limit) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.getFailedExecutions(limit);
+    }
+
+    @Override
+    public org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.ExecutionStatistics getExecutionStats(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionStatistics(profile);
+        }
+        return new org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.ExecutionStatistics();
+    }
+
+    @Override
+    public org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory saveExecutionHistory(
+            org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory history) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.saveOrUpdate(history);
+    }
 }
 
 

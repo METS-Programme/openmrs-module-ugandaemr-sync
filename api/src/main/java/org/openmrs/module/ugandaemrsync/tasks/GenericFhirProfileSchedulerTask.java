@@ -56,8 +56,8 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
 
             // Sort by execution priority if available
             profilesToExecute.sort((p1, p2) -> {
-                Integer priority1 = getExecutionPriority(p1);
-                Integer priority2 = getExecutionPriority(p2);
+                Integer priority1 = p1.getExecutionPriority() != null ? p1.getExecutionPriority() : 5;
+                Integer priority2 = p2.getExecutionPriority() != null ? p2.getExecutionPriority() : 5;
                 return priority1.compareTo(priority2);
             });
 
@@ -84,8 +84,12 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
      */
     private boolean shouldExecuteProfile(SyncFhirProfile profile) {
         // Check if schedule is configured and enabled
-        Boolean scheduleEnabled = getScheduleEnabled(profile);
-        if (scheduleEnabled != null && !scheduleEnabled) {
+        if (profile.getScheduleEnabled() != null && !profile.getScheduleEnabled()) {
+            return false;
+        }
+
+        // Check if profile itself is enabled
+        if (profile.getProfileEnabled() == null || !profile.getProfileEnabled()) {
             return false;
         }
 
@@ -93,29 +97,99 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
         Date now = new Date();
 
         // Check start time
-        Date startTime = getScheduleStartTime(profile);
-        if (startTime != null && now.before(startTime)) {
-            log.debug("Profile " + profile.getName() + " not yet started (starts at " + startTime + ")");
+        if (profile.getStartDateTime() != null && now.before(profile.getStartDateTime())) {
+            log.debug("Profile " + profile.getName() + " not yet started (starts at " + profile.getStartDateTime() + ")");
             return false;
         }
 
         // Check end time
-        Date endTime = getScheduleEndTime(profile);
-        if (endTime != null && now.after(endTime)) {
-            log.debug("Profile " + profile.getName() + " has ended (ended at " + endTime + ")");
+        if (profile.getEndDateTime() != null && now.after(profile.getEndDateTime())) {
+            log.debug("Profile " + profile.getName() + " has ended (ended at " + profile.getEndDateTime() + ")");
             return false;
         }
 
         // Check if already running (prevent concurrent execution unless parallel is enabled)
-        String lastStatus = getLastExecutionStatus(profile);
-        Boolean parallelExecution = getParallelExecution(profile);
+        if ("RUNNING".equals(profile.getLastExecutionStatus()) &&
+            (profile.getParallelExecution() == null || !profile.getParallelExecution())) {
+            log.debug("Profile " + profile.getName() + " is already running, skipping execution");
+            return false;
+        }
 
-        if ("RUNNING".equals(lastStatus) && (parallelExecution == null || !parallelExecution)) {
-            log.warn("Profile " + profile.getName() + " is already running, skipping execution");
+        // CRITICAL: Check if it's actually TIME to run this profile based on its schedule
+        if (!isDueForExecution(profile, now)) {
+            log.debug("Profile " + profile.getName() + " is not due for execution yet");
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Check if a profile is due for execution based on its schedule type and last execution
+     * This prevents long-running profiles from blocking other profiles from running
+     */
+    private boolean isDueForExecution(SyncFhirProfile profile, Date now) {
+        String scheduleType = profile.getScheduleType();
+
+        // If no schedule type is set, don't run automatically (manual only)
+        if (scheduleType == null || scheduleType.isEmpty()) {
+            return false;
+        }
+
+        // MANUAL schedules should never run automatically
+        if ("MANUAL".equals(scheduleType)) {
+            return false;
+        }
+
+        // Check if there's a next execution date set and use that
+        if (profile.getNextExecutionDate() != null) {
+            if (now.before(profile.getNextExecutionDate())) {
+                // Not time yet
+                return false;
+            }
+            // Time to run! The scheduler will set a new next execution date after this run
+            return true;
+        }
+
+        // For other schedule types, check if enough time has passed since last execution
+        Date lastExecution = profile.getLastExecutionDate();
+
+        if (lastExecution == null) {
+            // Never run before, it's due
+            return true;
+        }
+
+        long timeSinceLastExecution = now.getTime() - lastExecution.getTime();
+
+        // Check based on schedule type
+        switch (scheduleType) {
+            case "CRON":
+                // For CRON, we'd need a cron parser to determine exact next run time
+                // For simplicity, we'll use a minimum interval of 1 hour
+                // In production, you'd parse the cron expression and check if now matches
+                long minCronInterval = 60 * 60 * 1000L; // 1 hour minimum
+                return timeSinceLastExecution >= minCronInterval;
+
+            case "FIXED_RATE":
+                // Check if the fixed rate interval has passed
+                Long fixedRateInterval = profile.getFixedRateInterval();
+                if (fixedRateInterval != null && fixedRateInterval > 0) {
+                    return timeSinceLastExecution >= fixedRateInterval;
+                }
+                return false;
+
+            case "FIXED_DELAY":
+                // Check if the fixed delay interval has passed
+                Long fixedDelayInterval = profile.getFixedDelayInterval();
+                if (fixedDelayInterval != null && fixedDelayInterval > 0) {
+                    return timeSinceLastExecution >= fixedDelayInterval;
+                }
+                return false;
+
+            default:
+                log.warn("Unknown schedule type for profile " + profile.getName() + ": " + scheduleType);
+                return false;
+        }
     }
 
     /**
@@ -128,7 +202,8 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
         SyncFHIRRecord syncFHIRRecord = new SyncFHIRRecord();
 
         // Update status to running
-        updateExecutionStatus(profile, "RUNNING", null);
+        profile.setLastExecutionStatus("RUNNING");
+        profile.setLastExecutionError(null);
         saveProfile(service, profile);
 
         long startTime = System.currentTimeMillis();
@@ -136,9 +211,8 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
 
         try {
             // Execute with timeout if configured
-            Long timeout = getTimeoutDuration(profile);
-            if (timeout != null && timeout > 0) {
-                executeWithTimeout(syncFHIRRecord, profile, timeout);
+            if (profile.getTimeoutDuration() != null && profile.getTimeoutDuration() > 0) {
+                executeWithTimeout(syncFHIRRecord, profile, profile.getTimeoutDuration());
             } else {
                 executeProfileLogic(syncFHIRRecord, profile);
             }
@@ -151,13 +225,14 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
 
             // Update failure status
             String errorDetails = getStackTrace(e);
-            updateExecutionStatus(profile, "FAILED", errorDetails);
+            profile.setLastExecutionStatus("FAILED");
+            profile.setLastExecutionError(errorDetails);
 
             // Handle retry logic
-            Integer failedAttempts = getFailedExecutions(profile);
-            Integer maxRetries = getMaxRetryAttempts(profile);
+            long failedAttempts = profile.getFailedExecutions() != null ? profile.getFailedExecutions() : 0;
+            Integer maxRetries = profile.getMaxRetryAttempts();
 
-            if (maxRetries != null && failedAttempts != null && failedAttempts < maxRetries) {
+            if (maxRetries != null && failedAttempts < maxRetries) {
                 log.info("Scheduling retry for profile: " + profile.getName() + " (attempt " + (failedAttempts + 1) + "/" + maxRetries + ")");
                 scheduleRetry(profile);
             }
@@ -167,15 +242,30 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
 
             // Update final status and statistics
             if (success) {
-                updateExecutionStatus(profile, "SUCCESS", null);
-                incrementSuccessfulExecutions(profile);
+                profile.setLastExecutionStatus("SUCCESS");
+                profile.setSuccessfulExecutions(
+                    (profile.getSuccessfulExecutions() != null ? profile.getSuccessfulExecutions() : 0) + 1
+                );
+                // Calculate next execution date for successful runs
+                calculateNextExecutionDate(profile);
             } else {
-                incrementFailedExecutions(profile);
+                profile.setFailedExecutions(
+                    (profile.getFailedExecutions() != null ? profile.getFailedExecutions() : 0) + 1
+                );
+                // Don't set next execution date for failures - retry logic handles that
             }
 
-            incrementTotalExecutions(profile);
-            updateAverageExecutionTime(profile, executionTime);
-            updateLastExecutionDate(profile, new Date());
+            profile.setTotalExecutions(
+                (profile.getTotalExecutions() != null ? profile.getTotalExecutions() : 0) + 1
+            );
+
+            // Update average execution time
+            long currentAvg = profile.getAverageExecutionTime() != null ? profile.getAverageExecutionTime() : 0;
+            long totalExecs = profile.getTotalExecutions() != null ? profile.getTotalExecutions() : 1;
+            long newAvgTime = ((currentAvg * (totalExecs - 1)) + executionTime) / totalExecs;
+            profile.setAverageExecutionTime(newAvgTime);
+
+            profile.setLastExecutionDate(new Date());
 
             saveProfile(service, profile);
 
@@ -237,123 +327,80 @@ public class GenericFhirProfileSchedulerTask extends AbstractTask {
      * Schedule a retry for a failed profile
      */
     private void scheduleRetry(SyncFhirProfile profile) {
-        Long retryInterval = getRetryInterval(profile);
+        Long retryInterval = profile.getRetryInterval();
         if (retryInterval == null || retryInterval <= 0) {
             retryInterval = 60000L; // Default 1 minute
         }
 
         Date nextExecution = new Date(System.currentTimeMillis() + retryInterval);
-        setNextExecutionDate(profile, nextExecution);
+        profile.setNextExecutionDate(nextExecution);
 
         log.info("Scheduled retry for profile " + profile.getName() + " at " + nextExecution);
     }
 
-    // Helper methods for accessing extended profile properties using reflection
-    // These methods make the code backward compatible with existing profiles
+    /**
+     * Calculate and set the next execution date based on the profile's schedule type
+     * This prevents profiles from running continuously and blocks other profiles
+     */
+    private void calculateNextExecutionDate(SyncFhirProfile profile) {
+        String scheduleType = profile.getScheduleType();
+        Date now = new Date();
 
-    private Boolean getScheduleEnabled(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "scheduleEnabled", Boolean.class);
-    }
-
-    private Date getScheduleStartTime(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "startDateTime", Date.class);
-    }
-
-    private Date getScheduleEndTime(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "endDateTime", Date.class);
-    }
-
-    private String getLastExecutionStatus(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "lastExecutionStatus", String.class);
-    }
-
-    private Boolean getParallelExecution(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "parallelExecution", Boolean.class);
-    }
-
-    private Long getTimeoutDuration(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "timeoutDuration", Long.class);
-    }
-
-    private Integer getMaxRetryAttempts(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "maxRetryAttempts", Integer.class);
-    }
-
-    private Integer getFailedExecutions(SyncFhirProfile profile) {
-        Long value = getReflectiveField(profile, "failedExecutions", Long.class);
-        return value != null ? value.intValue() : 0;
-    }
-
-    private Long getRetryInterval(SyncFhirProfile profile) {
-        return getReflectiveField(profile, "retryInterval", Long.class);
-    }
-
-    private Integer getExecutionPriority(SyncFhirProfile profile) {
-        Integer value = getReflectiveField(profile, "executionPriority", Integer.class);
-        return value != null ? value : 5; // Default priority
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T getReflectiveField(SyncFhirProfile profile, String fieldName, Class<T> type) {
-        try {
-            java.lang.reflect.Field field = profile.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            return (T) field.get(profile);
-        } catch (Exception e) {
-            // Field doesn't exist yet (backward compatibility)
-            return null;
+        if (scheduleType == null || "MANUAL".equals(scheduleType)) {
+            // No automatic next execution for manual schedules
+            profile.setNextExecutionDate(null);
+            return;
         }
-    }
 
-    private void updateExecutionStatus(SyncFhirProfile profile, String status, String error) {
-        setReflectiveField(profile, "lastExecutionStatus", status);
-        if (error != null) {
-            setReflectiveField(profile, "lastExecutionError", error);
+        long nextExecutionDelay = 0;
+
+        switch (scheduleType) {
+            case "FIXED_RATE":
+                // Execute every X milliseconds from the last execution
+                Long fixedRateInterval = profile.getFixedRateInterval();
+                if (fixedRateInterval != null && fixedRateInterval > 0) {
+                    nextExecutionDelay = fixedRateInterval;
+                } else {
+                    // Default to 1 hour if not specified
+                    nextExecutionDelay = 60 * 60 * 1000L;
+                }
+                break;
+
+            case "FIXED_DELAY":
+                // Execute X milliseconds after the PREVIOUS execution completes
+                Long fixedDelayInterval = profile.getFixedDelayInterval();
+                if (fixedDelayInterval != null && fixedDelayInterval > 0) {
+                    nextExecutionDelay = fixedDelayInterval;
+                } else {
+                    // Default to 1 hour if not specified
+                    nextExecutionDelay = 60 * 60 * 1000L;
+                }
+                break;
+
+            case "CRON":
+                // For CRON, we'd ideally parse the cron expression
+                // For now, use a default of 1 hour (can be enhanced with a cron parser library)
+                // In production, use a library like CronUtils or Quartz CronExpression
+                String cronExpression = profile.getCronExpression();
+                if (cronExpression != null && !cronExpression.isEmpty()) {
+                    // Simple heuristic: if it's "0 0 * * * *" it's hourly, etc.
+                    // For now, default to 1 hour
+                    nextExecutionDelay = 60 * 60 * 1000L; // 1 hour default
+                } else {
+                    nextExecutionDelay = 60 * 60 * 1000L; // 1 hour default
+                }
+                break;
+
+            default:
+                log.warn("Unknown schedule type for profile " + profile.getName() + ": " + scheduleType);
+                // Don't set next execution date
+                return;
         }
-    }
 
-    private void incrementTotalExecutions(SyncFhirProfile profile) {
-        Long currentValue = getReflectiveField(profile, "totalExecutions", Long.class);
-        setReflectiveField(profile, "totalExecutions", (currentValue != null ? currentValue : 0L) + 1);
-    }
-
-    private void incrementSuccessfulExecutions(SyncFhirProfile profile) {
-        Long currentValue = getReflectiveField(profile, "successfulExecutions", Long.class);
-        setReflectiveField(profile, "successfulExecutions", (currentValue != null ? currentValue : 0L) + 1);
-    }
-
-    private void incrementFailedExecutions(SyncFhirProfile profile) {
-        Long currentValue = getReflectiveField(profile, "failedExecutions", Long.class);
-        setReflectiveField(profile, "failedExecutions", (currentValue != null ? currentValue : 0L) + 1);
-    }
-
-    private void updateAverageExecutionTime(SyncFhirProfile profile, long executionTime) {
-        Long currentAvg = getReflectiveField(profile, "averageExecutionTime", Long.class);
-        Long totalExecutions = getReflectiveField(profile, "totalExecutions", Long.class);
-
-        if (currentAvg != null && totalExecutions != null && totalExecutions > 0) {
-            long newAvgTime = ((currentAvg * (totalExecutions - 1)) + executionTime) / totalExecutions;
-            setReflectiveField(profile, "averageExecutionTime", newAvgTime);
-        } else {
-            setReflectiveField(profile, "averageExecutionTime", executionTime);
-        }
-    }
-
-    private void updateLastExecutionDate(SyncFhirProfile profile, Date date) {
-        setReflectiveField(profile, "lastExecutionDate", date);
-    }
-
-    private void setNextExecutionDate(SyncFhirProfile profile, Date date) {
-        setReflectiveField(profile, "nextExecutionDate", date);
-    }
-
-    private void setReflectiveField(SyncFhirProfile profile, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field field = profile.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(profile, value);
-        } catch (Exception e) {
-            log.debug("Could not set field " + fieldName + " for profile: " + profile.getName());
+        if (nextExecutionDelay > 0) {
+            Date nextExecution = new Date(now.getTime() + nextExecutionDelay);
+            profile.setNextExecutionDate(nextExecution);
+            log.debug("Next execution for profile " + profile.getName() + " scheduled at " + nextExecution);
         }
     }
 

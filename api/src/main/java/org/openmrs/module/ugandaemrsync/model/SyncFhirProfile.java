@@ -318,4 +318,273 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
     public void setSearchURL(String searchURL) {
         this.searchURL = searchURL;
     }
+
+    // ===========================
+    // SCHEDULING CONFIGURATION
+    // ===========================
+
+    @Column(name = "schedule_enabled")
+    private Boolean scheduleEnabled = false;
+
+    @Column(name = "schedule_type", length = 50)
+    private String scheduleType; // CRON, FIXED_RATE, FIXED_DELAY, MANUAL
+
+    @Column(name = "cron_expression", length = 100)
+    private String cronExpression;
+
+    @Column(name = "fixed_rate_interval")
+    private Long fixedRateInterval; // milliseconds
+
+    @Column(name = "fixed_delay_interval")
+    private Long fixedDelayInterval; // milliseconds
+
+    @Column(name = "start_date_time")
+    private Date startDateTime;
+
+    @Column(name = "end_date_time")
+    private Date endDateTime;
+
+    @Column(name = "max_retry_attempts")
+    private Integer maxRetryAttempts = 3;
+
+    @Column(name = "retry_interval")
+    private Long retryInterval = 60000L; // 1 minute default
+
+    @Column(name = "timeout_duration")
+    private Long timeoutDuration = 300000L; // 5 minutes default
+
+    @Column(name = "parallel_execution")
+    private Boolean parallelExecution = false;
+
+    @Column(name = "execution_priority")
+    private Integer executionPriority = 5; // 1-10, 1 highest
+
+    // ===========================
+    // TASK CONFIGURATION
+    // ===========================
+
+    @Column(name = "task_name", length = 255)
+    private String taskName; // Unique task name
+
+    @Column(name = "task_description", length = 1000)
+    private String taskDescription;
+
+    @Column(name = "task_group", length = 100)
+    private String taskGroup; // For grouping related tasks
+
+    // ===========================
+    // EXECUTION TRACKING
+    // ===========================
+
+    @Column(name = "last_execution_date")
+    private Date lastExecutionDate;
+
+    @Column(name = "next_execution_date")
+    private Date nextExecutionDate;
+
+    @Column(name = "last_execution_status", length = 50)
+    private String lastExecutionStatus; // SUCCESS, FAILED, RUNNING
+
+    @Column(name = "total_executions")
+    private Long totalExecutions = 0L;
+
+    @Column(name = "successful_executions")
+    private Long successfulExecutions = 0L;
+
+    @Column(name = "failed_executions")
+    private Long failedExecutions = 0L;
+
+    @Column(name = "average_execution_time")
+    private Long averageExecutionTime = 0L;
+
+    @Column(name = "last_execution_error", length = 2000)
+    private String lastExecutionError;
+
+    // ===========================
+    // GETTERS AND SETTERS - SCHEDULING
+    // ===========================
+
+    public Boolean getScheduleEnabled() {
+        return scheduleEnabled;
+    }
+
+    public void setScheduleEnabled(Boolean scheduleEnabled) {
+        this.scheduleEnabled = scheduleEnabled;
+    }
+
+    public String getScheduleType() {
+        return scheduleType;
+    }
+
+    public void setScheduleType(String scheduleType) {
+        this.scheduleType = scheduleType;
+    }
+
+    public String getCronExpression() {
+        return cronExpression;
+    }
+
+    public void setCronExpression(String cronExpression) {
+        this.cronExpression = cronExpression;
+    }
+
+    public Long getFixedRateInterval() {
+        return fixedRateInterval;
+    }
+
+    public void setFixedRateInterval(Long fixedRateInterval) {
+        this.fixedRateInterval = fixedRateInterval;
+    }
+
+    public Long getFixedDelayInterval() {
+        return fixedDelayInterval;
+    }
+
+    public void setFixedDelayInterval(Long fixedDelayInterval) {
+        this.fixedDelayInterval = fixedDelayInterval;
+    }
+
+    public Date getStartDateTime() {
+        return startDateTime;
+    }
+
+    public void setStartDateTime(Date startDateTime) {
+        this.startDateTime = startDateTime;
+    }
+
+    public Date getEndDateTime() {
+        return endDateTime;
+    }
+
+    public void setEndDateTime(Date endDateTime) {
+        this.endDateTime = endDateTime;
+    }
+
+    public Integer getMaxRetryAttempts() {
+        return maxRetryAttempts;
+    }
+
+    public void setMaxRetryAttempts(Integer maxRetryAttempts) {
+        this.maxRetryAttempts = maxRetryAttempts;
+    }
+
+    public Long getRetryInterval() {
+        return retryInterval;
+    }
+
+    public void setRetryInterval(Long retryInterval) {
+        this.retryInterval = retryInterval;
+    }
+
+    public Long getTimeoutDuration() {
+        return timeoutDuration;
+    }
+
+    public void setTimeoutDuration(Long timeoutDuration) {
+        this.timeoutDuration = timeoutDuration;
+    }
+
+    public Boolean getParallelExecution() {
+        return parallelExecution;
+    }
+
+    public void setParallelExecution(Boolean parallelExecution) {
+        this.parallelExecution = parallelExecution;
+    }
+
+    public Integer getExecutionPriority() {
+        return executionPriority;
+    }
+
+    public void setExecutionPriority(Integer executionPriority) {
+        this.executionPriority = executionPriority;
+    }
+
+    public String getTaskName() {
+        return taskName;
+    }
+
+    public void setTaskName(String taskName) {
+        this.taskName = taskName;
+    }
+
+    public String getTaskDescription() {
+        return taskDescription;
+    }
+
+    public void setTaskDescription(String taskDescription) {
+        this.taskDescription = taskDescription;
+    }
+
+    public String getTaskGroup() {
+        return taskGroup;
+    }
+
+    public void setTaskGroup(String taskGroup) {
+        this.taskGroup = taskGroup;
+    }
+
+    public Date getLastExecutionDate() {
+        return lastExecutionDate;
+    }
+
+    public void setLastExecutionDate(Date lastExecutionDate) {
+        this.lastExecutionDate = lastExecutionDate;
+    }
+
+    public Date getNextExecutionDate() {
+        return nextExecutionDate;
+    }
+
+    public void setNextExecutionDate(Date nextExecutionDate) {
+        this.nextExecutionDate = nextExecutionDate;
+    }
+
+    public String getLastExecutionStatus() {
+        return lastExecutionStatus;
+    }
+
+    public void setLastExecutionStatus(String lastExecutionStatus) {
+        this.lastExecutionStatus = lastExecutionStatus;
+    }
+
+    public Long getTotalExecutions() {
+        return totalExecutions;
+    }
+
+    public void setTotalExecutions(Long totalExecutions) {
+        this.totalExecutions = totalExecutions;
+    }
+
+    public Long getSuccessfulExecutions() {
+        return successfulExecutions;
+    }
+
+    public void setSuccessfulExecutions(Long successfulExecutions) {
+        this.successfulExecutions = successfulExecutions;
+    }
+
+    public Long getFailedExecutions() {
+        return failedExecutions;
+    }
+
+    public void setFailedExecutions(Long failedExecutions) {
+        this.failedExecutions = failedExecutions;
+    }
+
+    public Long getAverageExecutionTime() {
+        return averageExecutionTime;
+    }
+
+    public void setAverageExecutionTime(Long averageExecutionTime) {
+        this.averageExecutionTime = averageExecutionTime;
+    }
+
+    public String getLastExecutionError() {
+        return lastExecutionError;
+    }
+
+    public void setLastExecutionError(String lastExecutionError) {
+        this.lastExecutionError = lastExecutionError;
+    }
 }

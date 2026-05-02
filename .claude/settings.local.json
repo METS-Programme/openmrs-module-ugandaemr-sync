@@ -35,7 +35,8 @@
       "Bash(awk -F'\\\\t' '{print $2 \"\\\\t\" $4}')",
       "Bash(awk '/<column name=\"name\"/ {name=$0} /<column name=\"uuid\"/ {uuid=$0; gsub\\(/.*value=\"/, \"\", name\\); gsub\\(/\".*/, \"\", name\\); gsub\\(/.*value=\"/, \"\", uuid\\); gsub\\(/\".*/, \"\", uuid\\); print name \"|\" uuid}' /Users/lubwamasamuel/Projects/mets/ugandaemr/modules/openmrs-module-ugandaemr-sync/api/src/main/resources/liquibase.xml)",
       "Bash(awk '/<column name=\"name\"/ {name=$0} /<column name=\"uuid\"/ {uuid=$0; gsub\\(/.*value=\"/, \"\", name\\); gsub\\(/\".*/, \"\", name\\); gsub\\(/.*value=\"/, \"\", uuid\\); gsub\\(/\".*/, \"\", uuid\\); if \\(name != \"\" && uuid != \"\" && uuid ~ /^[0-9a-f]{8}-/\\) print name \"|\" uuid}' /Users/lubwamasamuel/Projects/mets/ugandaemr/modules/openmrs-module-ugandaemr-sync/api/src/main/resources/liquibase.xml)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(xmllint *)"
     ]
   }
 }
