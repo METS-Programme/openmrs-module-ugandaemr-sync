@@ -13,3 +13,6 @@ target/
 
 # Claude Code settings
 .claude/
+
+# Development documentation archives
+.development-docs/

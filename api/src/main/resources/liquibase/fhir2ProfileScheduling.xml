@@ -87,30 +87,7 @@
             </column>
         </addColumn>
 
-        <!-- Add indexes for performance -->
-        <addIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled">
-            <column name="schedule_enabled"/>
-        </addIndex>
-
-        <addIndex tableName="sync_fhir_profile" indexName="idx_task_group">
-            <column name="task_group"/>
-        </addIndex>
-
-        <addIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status">
-            <column name="last_execution_status"/>
-        </addIndex>
-
-        <addIndex tableName="sync_fhir_profile" indexName="idx_profile_enabled">
-            <column name="profile_enabled"/>
-        </addIndex>
-
         <rollback>
-            <!-- Drop indexes -->
-            <dropIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled"/>
-            <dropIndex tableName="sync_fhir_profile" indexName="idx_task_group"/>
-            <dropIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status"/>
-            <dropIndex tableName="sync_fhir_profile" indexName="idx_profile_enabled"/>
-
             <!-- Drop columns -->
             <dropColumn tableName="sync_fhir_profile" columnName="schedule_enabled"/>
             <dropColumn tableName="sync_fhir_profile" columnName="schedule_type"/>
@@ -135,6 +112,34 @@
             <dropColumn tableName="sync_fhir_profile" columnName="failed_executions"/>
             <dropColumn tableName="sync_fhir_profile" columnName="average_execution_time"/>
             <dropColumn tableName="sync_fhir_profile" columnName="last_execution_error"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Create indexes for performance - separate changeSet -->
+    <changeSet id="20240501-add-profile-indexes" author="slubwama">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sync_fhir_profile"/>
+            <columnExists tableName="sync_fhir_profile" columnName="schedule_enabled"/>
+        </preConditions>
+
+        <!-- Add indexes for performance -->
+        <addIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled">
+            <column name="schedule_enabled"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile" indexName="idx_task_group">
+            <column name="task_group"/>
+        </addIndex>
+
+        <addIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status">
+            <column name="last_execution_status"/>
+        </addIndex>
+
+        <rollback>
+            <!-- Drop indexes -->
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled"/>
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_task_group"/>
+            <dropIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status"/>
         </rollback>
     </changeSet>
 
