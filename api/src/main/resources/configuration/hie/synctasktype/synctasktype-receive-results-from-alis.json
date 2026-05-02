@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "d4a3ebbb-e793-4e56-867c-0cf998e51f56",
+    "name": "Receive Results From ALIS",
+    "description": "Sync task type for Receive Results From ALIS"
+  },
+  "configuration": {
+    "name": "Receive Results From ALIS",
+    "dataType": "org.openmrs.TestOrder",
+    "dataTypeId": "52a447d3-a64a-11e3-9aeb-50e549534c5e",
+    "endpoint": {
+      "url": "",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}

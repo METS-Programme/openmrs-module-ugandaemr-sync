@@ -1,0 +1,137 @@
+{
+  "metadata": {
+    "id": "3e4790d3-e257-424b-ada3-b87871a41a6f",
+    "name": "Prison Patient Data Exchange",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for Prison Patient Data Exchange",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "Prison Patient Data Exchange",
+    "resourceTypes": "Encounter,Patient,Person,Observation",
+    "isCaseBasedProfile": true,
+    "caseBasedPrimaryResourceType": "EpisodeOfCare",
+    "caseBasedPrimaryResourceTypeId": "a2b9ce3d-a5e8-4ad3-832c-b6994bd8b615",
+    "resourceSearchParameter": {
+      "observationFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "patientFilter": {
+        "name": [],
+        "given": [],
+        "family": [],
+        "identifier": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deathDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "encounterFilter": {
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "location": [],
+        "participant": [],
+        "subject": [],
+        "type": [
+          "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f",
+          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+        ],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "personFilter": {
+        "name": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "practitionerFilter": {
+        "identifier": [],
+        "name": [],
+        "given": [],
+        "family": [],
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "episodeofcareFilter": {
+        "type": [
+          ""
+        ],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      }
+    },
+    "generateBundle": true,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": true,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "24",
+    "patientIdentifierTypeName": ""
+  }
+}

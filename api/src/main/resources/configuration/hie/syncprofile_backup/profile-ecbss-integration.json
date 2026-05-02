@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "99c4d715-4fcf-4d95-a946-257c6de05cf7",
+    "name": "eCBSS Integration",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for eCBSS Integration",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "eCBSS Integration",
+    "resourceTypes": "Encounter,Patient,Person,Observation",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "EpisodeOfCare",
+    "caseBasedPrimaryResourceTypeId": "9dc21a72-0971-11e7-8037-507b9dc4c741",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

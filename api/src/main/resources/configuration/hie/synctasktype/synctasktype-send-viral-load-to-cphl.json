@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "3551ca84-06c0-432b-9064-fcfeefd6f4ec",
+    "name": "Send Viral Load To CPHL",
+    "description": "Sync task type for Send Viral Load To CPHL"
+  },
+  "configuration": {
+    "name": "Send Viral Load To CPHL",
+    "dataType": "org.openmrs.TestOrder",
+    "dataTypeId": "315124004",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/vl/send?api_token=ZggUu6d4wahRY2MTcRN9BA9fHMla8SdOOwek0IsZcRTjOrjcGdzdEANJxpQX",
+      "username": "emrlabClient",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": "{{CONFIGURE_TOKEN}}"
+    }
+  }
+}

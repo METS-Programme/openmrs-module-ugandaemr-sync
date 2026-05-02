@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "d63cb4b5-97ba-4380-aba9-d3f60634cd7a",
+    "name": "Sent SMS Messages from central server",
+    "description": "Sync task type for Sent SMS Messages from central server"
+  },
+  "configuration": {
+    "name": "Sent SMS Messages from central server",
+    "dataType": "org.openmrs.Encounter",
+    "dataTypeId": "",
+    "endpoint": {
+      "url": "http://localhost:8000/api/sms/facility-sent/",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}

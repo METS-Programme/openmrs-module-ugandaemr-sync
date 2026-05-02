@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "527e1372-ff30-41e9-b139-d61b8a9ff197",
+    "name": "HTS Data",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for HTS Data",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "HTS Data",
+    "resourceTypes": "Patient,Person,Encounter,Observation",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "Encounter",
+    "caseBasedPrimaryResourceTypeId": "264daIZd-f80e-48fe-nba9-P37f2W1905Pv",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

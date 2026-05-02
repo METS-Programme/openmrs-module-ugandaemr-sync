@@ -1,0 +1,139 @@
+{
+  "metadata": {
+    "id": "51f8fa8f-a6fc-46b7-8f0a-afa28f7d4f40",
+    "name": "Example Profile",
+    "category": "DEFAULT",
+    "description": "Example resource-based FHIR sync profile for Encounter, Patient, and Observation resources",
+    "version": "1.0",
+    "author": "METS Programme",
+    "createdAt": "2021-05-04T08:14:17Z",
+    "updatedAt": "2021-05-04T08:14:17Z",
+    "tags": [
+      "example",
+      "resource-based",
+      "fhir"
+    ]
+  },
+  "configuration": {
+    "resourceTypes": "Encounter,Patient,Observation",
+    "isCaseBasedProfile": false,
+    "resourceSearchParameter": {
+      "observationFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": [],
+        "valueDateParam": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "upperBound": ""
+        }
+      },
+      "patientFilter": {
+        "name": [],
+        "given": [],
+        "family": [],
+        "identifier": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "deathDate": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "upperBound": ""
+        }
+      },
+      "encounterFilter": {
+        "date": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "location": [],
+        "participant": [],
+        "subject": [],
+        "id": [],
+        "type": [
+          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+        ],
+        "lastUpdated": {
+          "lowerBound": "",
+          "upperBound": ""
+        }
+      },
+      "personFilter": {
+        "name": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "upperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "upperBound": ""
+        }
+      },
+      "practitionerFilter": {
+        "identifier": [],
+        "name": [],
+        "given": [],
+        "family": [],
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "upperBound": ""
+        }
+      }
+    },
+    "generateBundle": true,
+    "numberOfResourcesInBundle": 50,
+    "profileEnabled": true,
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": "HIV Clinic No.",
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 30,
+    "syncLimit": null,
+    "searchable": null,
+    "searchURL": null,
+    "endpoint": {
+      "url": "http://exampleurl.com",
+      "authentication": "BASIC",
+      "username": "username",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": "{{CONFIGURE_TOKEN}}"
+    }
+  }
+}

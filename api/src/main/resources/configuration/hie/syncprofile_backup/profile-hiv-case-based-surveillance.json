@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "56db6ac0-0e60-4ddc-8dfd-0035a4e64489",
+    "name": "HIV CASE BASED SURVEILLANCE",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for HIV CASE BASED SURVEILLANCE",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "HIV CASE BASED SURVEILLANCE",
+    "resourceTypes": "Encounter,Patient,Person,Observation",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "Encounter",
+    "caseBasedPrimaryResourceTypeId": "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

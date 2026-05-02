@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "ccfafdf8-8ba1-4c00-986f-21392c1af1f6",
+    "name": "Client Registry Integration",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for Client Registry Integration",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "Client Registry Integration",
+    "resourceTypes": "Patient",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "PatientIdentifierType",
+    "caseBasedPrimaryResourceTypeId": "05a29f94-c0ed-11e2-94be-8c13b969e334",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 10,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

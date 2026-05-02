@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "2def1dea-fc0b-11ef-ab84-28977ca9db4b",
+    "name": "eAFYA Stock Integration",
+    "description": "Sync task type for eAFYA Stock Integration"
+  },
+  "configuration": {
+    "name": "eAFYA Stock Integration",
+    "dataType": "org.openmrs.Drug",
+    "dataTypeId": "N/A",
+    "endpoint": {
+      "url": "192.168.1.2",
+      "username": "theusername",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": null
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "4c4e9551-d9d6-4882-93bd-e61a42e2f755",
+    "name": "Receive ART Access Visits Data",
+    "description": "Sync task type for Receive ART Access Visits Data"
+  },
+  "configuration": {
+    "name": "Receive ART Access Visits Data",
+    "dataType": "org.openmrs.Encounter",
+    "dataTypeId": "",
+    "endpoint": {
+      "url": "http://52.12.36.20:8070/api/read_visits/",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}
