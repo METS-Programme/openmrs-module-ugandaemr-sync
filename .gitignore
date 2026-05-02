@@ -16,3 +16,6 @@ target/
 
 # Development documentation archives
 .development-docs/
+
+# Java version file
+.java-version
