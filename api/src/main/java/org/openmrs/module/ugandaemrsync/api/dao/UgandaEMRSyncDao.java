@@ -24,6 +24,8 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirResource;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirProfile;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirProfileLog;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
+import org.openmrs.module.ugandaemrsync.validation.ValidationUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -141,14 +143,23 @@ public class UgandaEMRSyncDao {
      *
      * @see org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService#getIncompleteActionSyncTask(java.lang.String)
      */
-    public List<SyncTask> getIncompleteActionSyncTask(String syncTaskTypeUuid) {
-        SQLQuery sqlQuery = getSession()
-                .createSQLQuery(
-                        "select sync_task.* from sync_task inner join sync_task_type on (sync_task_type.sync_task_type_id=sync_task.sync_task_type) where sync_task_type.uuid='"
-                                + syncTaskTypeUuid
-                                + "' and  require_action=true and action_completed=false;");
+    public List<SyncTask> getIncompleteActionSyncTask(String syncTaskTypeUuid) throws UgandaEMRSyncException {
+        // Validate UUID format and prevent SQL injection
+        ValidationUtils.requireValidUUID("syncTaskTypeUuid", syncTaskTypeUuid);
+        ValidationUtils.requireNoSQLInjection("syncTaskTypeUuid", syncTaskTypeUuid);
+
+        // Use parameterized query to prevent SQL injection
+        String query = "SELECT sync_task.* FROM sync_task INNER JOIN sync_task_type ON (sync_task_type.sync_task_type_id=sync_task.sync_task_type) WHERE sync_task_type.uuid = :uuid AND require_action = true AND action_completed = false";
+
+        SQLQuery sqlQuery = getSession().createSQLQuery(query);
+        sqlQuery.setParameter("uuid", syncTaskTypeUuid);
         sqlQuery.addEntity(SyncTask.class);
-        return sqlQuery.list();
+
+        logger.debug("Executing parameterized query for incomplete action tasks with UUID: {}", syncTaskTypeUuid);
+
+        List<SyncTask> result = sqlQuery.list();
+        logger.debug("Query returned {} tasks", result.size());
+        return result;
     }
 
     /**
@@ -452,13 +463,27 @@ public class UgandaEMRSyncDao {
         return (SyncTask) criteria.uniqueResult();
     }
 
-    public List<SyncFhirResource> getSyncResourceBySyncFhirProfile(SyncFhirProfile syncFhirProfile, String from, String to) {
-        to =to +" 23:59:59";
-        String query ="select resource_id, synced, date_synced, expiry_date, generator_profile, NULL as resource, sfr.creator, sfr.date_created, sfr.changed_by, sfr.date_changed, sfr.voided, sfr.date_voided, sfr.voided_by, sfr.void_reason, sfr.uuid, sfr.statusCode, status_code_detail, patient_id from sync_fhir_resource sfr inner join sync_fhir_profile sfp on sfr.generator_profile = sfp.sync_fhir_profile_id where sfp.uuid='" + syncFhirProfile.getUuid()
-                + "' and sfr.date_created >='"+from +"'"+"and sfr.date_created <='"+to +"';" ;
-        SQLQuery sqlQuery = getSession()
-                .createSQLQuery(query);
-        logger.debug("Executing query: {}", query);
+    public List<SyncFhirResource> getSyncResourceBySyncFhirProfile(SyncFhirProfile syncFhirProfile, String from, String to) throws UgandaEMRSyncException {
+        // Validate inputs using existing ValidationUtils to prevent SQL injection
+        ValidationUtils.requireNotEmpty("fromDate", from);
+        ValidationUtils.requireNotEmpty("toDate", to);
+        ValidationUtils.requireValidUUID("syncFhirProfile", syncFhirProfile.getUuid());
+        ValidationUtils.requireNoSQLInjection("fromDate", from);
+        ValidationUtils.requireNoSQLInjection("toDate", to);
+
+        // Append time component to end date
+        String toDateTime = to + " 23:59:59";
+
+        // Use parameterized query to prevent SQL injection
+        String query = "SELECT resource_id, synced, date_synced, expiry_date, generator_profile, NULL as resource, sfr.creator, sfr.date_created, sfr.changed_by, sfr.date_changed, sfr.voided, sfr.date_voided, sfr.voided_by, sfr.void_reason, sfr.uuid, sfr.statusCode, status_code_detail, patient_id FROM sync_fhir_resource sfr INNER JOIN sync_fhir_profile sfp ON sfr.generator_profile = sfp.sync_fhir_profile_id WHERE sfp.uuid = :profileUuid AND sfr.date_created >= :fromDate AND sfr.date_created <= :toDate";
+
+        SQLQuery sqlQuery = getSession().createSQLQuery(query);
+        sqlQuery.setParameter("profileUuid", syncFhirProfile.getUuid());
+        sqlQuery.setParameter("fromDate", from);
+        sqlQuery.setParameter("toDate", toDateTime);
+
+        logger.debug("Executing parameterized query for profile: {}, date range: {} to {}", syncFhirProfile.getUuid(), from, toDateTime);
+
         sqlQuery.addEntity(SyncFhirResource.class);
         return sqlQuery.list();
 
@@ -483,8 +508,29 @@ public class UgandaEMRSyncDao {
         return criteria.list();
     }
 
-    public void deleteUnSuccessfulSyncTasks(String syncTask, SyncTaskType syncTaskType) {
-        Context.getAdministrationService().executeSQL(String.format("delete from sync_task where status_code != %s and sync_task = '%s' and sync_task_type= %s",200,syncTask,syncTaskType.getSyncTaskTypeId()),false);
+    public void deleteUnSuccessfulSyncTasks(String syncTask, SyncTaskType syncTaskType) throws UgandaEMRSyncException {
+        // Validate inputs to prevent SQL injection
+        ValidationUtils.requireNotEmpty("syncTask", syncTask);
+        ValidationUtils.requireNoSQLInjection("syncTask", syncTask);
+
+        if (syncTaskType == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "SyncTaskType cannot be null"
+            );
+        }
+
+        // Use parameterized query to prevent SQL injection
+        String query = "DELETE FROM sync_task WHERE status_code != :statusCode AND sync_task = :syncTask AND sync_task_type = :syncTaskTypeId";
+
+        org.hibernate.SQLQuery sqlQuery = getSession().createSQLQuery(query);
+        sqlQuery.setParameter("statusCode", 200);
+        sqlQuery.setParameter("syncTask", syncTask);
+        sqlQuery.setParameter("syncTaskTypeId", syncTaskType.getSyncTaskTypeId());
+
+        logger.debug("Deleting unsuccessful sync tasks: syncTask={}, syncTaskTypeId={}", syncTask, syncTaskType.getSyncTaskTypeId());
+
+        sqlQuery.executeUpdate();
     }
 
     /**

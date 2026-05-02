@@ -502,7 +502,7 @@ public class SyncConstant {
 
 	public static final String REGIMEN_LINE_QUERY ="Select patient_id from patient_state ps inner join patient_program pp on ps.patient_program_id = pp.patient_program_id inner join program p\n" +
 			"    on pp.program_id = p.program_id inner join program_workflow_state pws on ps.state = pws.program_workflow_state_id where ps.end_date is null and p.uuid='18c6d4aa-0a36-11e7-8dbb-507b9dc4c741' and pws.uuid='%s' and patient_id=%s";
-	public static final String LAB_ORDER_QUERY = "select orders.order_id from orders  inner join test_order on (test_order.order_id=orders.order_id) where order_number=\"%s\"";
+		public static final String LAB_ORDER_QUERY = "SELECT orders.order_id FROM orders INNER JOIN test_order ON (test_order.order_id=orders.order_id) WHERE order_number = :orderNumber";
 
     public static final String PERSON_UUID_QUERY="select uuid from person WHERE date_created > :lastSyncDate1 OR date_changed > :lastSyncDate2 OR date_voided > :lastSyncDate3";
 	public static final String PATIENT_UUID_QUERY="select uuid from patient inner join person on (person.person_id =patient.patient_id) WHERE patient.date_created > :lastSyncDate1 OR patient.date_changed > :lastSyncDate2 OR patient.voided > :lastSyncDate3";

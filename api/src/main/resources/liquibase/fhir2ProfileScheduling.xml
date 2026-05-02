@@ -283,12 +283,11 @@
             <column name="description" value="Executes enabled FHIR profiles based on database configuration. Supports both case-based and resource-based profiles with automatic retry and error tracking."/>
             <column name="schedulable_class" value="org.openmrs.module.ugandaemrsync.tasks.GenericFhirProfileSchedulerTask"/>
             <column name="start_time_pattern" value="MM/dd/yyyy HH:mm:ss" />
-            <column name="start_time" valueDate="2024-01-01T00:00:00"/>
+            <column name="start_time" valueDate="2026-01-01T00:00:00"/>
             <column name="repeat_interval" value="300000"/>
             <column name="started" value="1"/>
             <column name="created_by" value="1"/>
-            <column name="date_created" valueDate="now()"/>
-            <column name="retired" valueBoolean="false"/>
+            <column name="date_created" valueDate="2026-01-01T00:00:00"/>
             <column name="uuid" value="bebe701a-4614-11f1-8bc7-4e0a484b9f3b"/>
         </insert>
     </changeSet>
