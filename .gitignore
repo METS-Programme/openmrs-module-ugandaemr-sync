@@ -10,3 +10,6 @@ ugandaemr.sync.iml
 api/*.iml
 ugandaemrsync.iml
 target/
+
+# Claude Code settings
+.claude/
