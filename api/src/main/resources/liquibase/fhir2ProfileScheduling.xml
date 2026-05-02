@@ -238,26 +238,58 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="ugandaemrsync-06272019-1637" author="slubwama">
+    <changeSet id="ugandaemrsync-add-custom-task-class-to-profile-2024-05-02" author="slubwama">
         <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sync_fhir_profile"/>
+            <not>
+                <columnExists tableName="sync_fhir_profile" columnName="custom_task_class"/>
+            </not>
+        </preConditions>
+
+        <comment>
+            Add custom_task_class column to sync_fhir_profile table.
+            This allows profiles to specify custom task classes for specialized execution logic.
+            If left NULL, the profile will be executed by the GenericFhirProfileSchedulerTask.
+        </comment>
+
+        <addColumn tableName="sync_fhir_profile">
+            <column name="custom_task_class" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="sync_fhir_profile" columnName="custom_task_class"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="ugandaemrsync-create-generic-fhir-profile-task-2024-05-02" author="slubwama">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="scheduler_task_config"/>
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM scheduler_task_config
-                WHERE schedulable_class = 'org.openmrs.module.ugandaemrsync.tasks.SendViralLoadRequestToCentralServerTask'
+                WHERE schedulable_class = 'org.openmrs.module.ugandaemrsync.tasks.GenericFhirProfileSchedulerTask'
             </sqlCheck>
         </preConditions>
-        <comment>Sending Viral Load Request to Central Server Task</comment>
+
+        <comment>
+            Insert the Generic FHIR Profile Scheduler Task configuration.
+            This single task can execute multiple FHIR profiles based on database configuration.
+            Runs every 5 minutes by default to check for enabled profiles that need execution.
+        </comment>
+
         <insert tableName="scheduler_task_config">
-            <column name="name" value="Send Viral Load Request to Central Server Task" />
-            <column name="description" value="Sends a viral load request to the central server" />
-            <column name="schedulable_class" value="org.openmrs.module.ugandaemrsync.tasks.SendViralLoadRequestToCentralServerTask" />
+            <column name="name" value="Generic FHIR Profile Scheduler"/>
+            <column name="description" value="Executes enabled FHIR profiles based on database configuration. Supports both case-based and resource-based profiles with automatic retry and error tracking."/>
+            <column name="schedulable_class" value="org.openmrs.module.ugandaemrsync.tasks.GenericFhirProfileSchedulerTask"/>
             <column name="start_time_pattern" value="MM/dd/yyyy HH:mm:ss" />
-            <column name="start_time" valueDate="2019-06-27T11:59:59" />
-            <column name="repeat_interval" value="3600" />
-            <column name="date_created" valueDate="CURRENT_TIMESTAMP" />
-            <column name="created_by" value="1" />
-            <column name="start_on_startup" value="1"/>
+            <column name="start_time" valueDate="2024-01-01T00:00:00"/>
+            <column name="repeat_interval" value="300000"/>
             <column name="started" value="1"/>
-            <column name="uuid" value="5eec5417-6a6d-4598-a7a9-03e27ca4cb91" />
+            <column name="created_by" value="1"/>
+            <column name="date_created" valueDate="now()"/>
+            <column name="retired" valueBoolean="false"/>
+            <column name="uuid" value="bebe701a-4614-11f1-8bc7-4e0a484b9f3b"/>
         </insert>
     </changeSet>
 
