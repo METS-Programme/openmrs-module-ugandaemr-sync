@@ -58,4 +58,12 @@
             </list>
         </property>
     </bean>
+
+    <!-- SyncFhirProfileExecutionHistory DAO for tracking profile executions -->
+    <bean id="ugandaemrsync.SyncFhirProfileExecutionHistoryDao"
+          class="org.openmrs.module.ugandaemrsync.api.dao.hibernate.SyncFhirProfileExecutionHistoryDaoImpl">
+        <property name="sessionFactory">
+            <ref bean="dbSessionFactory"/>
+        </property>
+    </bean>
 </beans>

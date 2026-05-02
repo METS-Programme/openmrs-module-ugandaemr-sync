@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "3c1ce940-8ade-11ea-bc55-0242ac130003",
+    "name": "Sync Data to Shared Health Record",
+    "description": "Sync task type for Sync Data to Shared Health Record"
+  },
+  "configuration": {
+    "name": "Sync Data to Shared Health Record",
+    "dataType": "",
+    "dataTypeId": "315124004",
+    "endpoint": {
+      "url": "http://localhost:8085/hapi-fhir-jpaserver/fhir/Bundle",
+      "username": "ugandaemr001",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": null
+    }
+  }
+}

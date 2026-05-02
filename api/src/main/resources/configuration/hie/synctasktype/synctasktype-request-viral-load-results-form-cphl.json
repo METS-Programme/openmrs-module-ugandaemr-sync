@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "3396dcf0-2106-4e73-9b90-c63978c3a8b4",
+    "name": "Request Viral Load Results form CPHL",
+    "description": "Sync task type for Request Viral Load Results form CPHL"
+  },
+  "configuration": {
+    "name": "Request Viral Load Results form CPHL",
+    "dataType": "org.openmrs.TestOrder",
+    "dataTypeId": "315124004",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/vl/request?api_token=ZggUu6d4wahRY2MTcRN9BA9fHMla8SdOOwek0IsZcRTjOrjcGdzdEANJxpQX",
+      "username": "emrlabClient",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": "{{CONFIGURE_TOKEN}}"
+    }
+  }
+}

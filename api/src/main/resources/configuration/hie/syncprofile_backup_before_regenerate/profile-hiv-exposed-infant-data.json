@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "e8a37e2f-6c78-476e-93a5-14aec653c406",
+    "name": "HIV Exposed Infant Data",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for HIV Exposed Infant Data",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "HIV Exposed Infant Data",
+    "resourceTypes": "Patient,Person,Encounter,Observation",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "Encounter",
+    "caseBasedPrimaryResourceTypeId": "4345dacb-909d-429c-99aa-045f2db77e2b",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

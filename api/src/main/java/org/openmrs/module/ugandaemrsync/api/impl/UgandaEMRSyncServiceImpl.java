@@ -97,6 +97,11 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
+import org.openmrs.module.ugandaemrsync.util.SyncLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID;
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.SYNC_METRIC_DATA;
 import static org.openmrs.module.ugandaemrsync.UgandaEMRSyncConfig.PATIENT_ID_TYPE_UIC_UUID;
@@ -110,6 +115,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     Log log = LogFactory.getLog(UgandaEMRSyncServiceImpl.class);
     private List<Object> unproccesedItems = new ArrayList<>();
     private List<Object> processedItems = new ArrayList<>();
+    private final SyncLogger syncLogger = SyncLogger.getLogger(UgandaEMRSyncServiceImpl.class);
 
     private StockOperation stockOperation = null;
 
@@ -970,7 +976,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
                     return obj;
                 }
             } catch (JSONException e) {
-                log.error(e);
+                log.error("",e);
             }
         }
 
@@ -2724,33 +2730,67 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
 
     @Override
     public Map requestLabResult(Order order, SyncTask syncTask) {
+        final String correlationId = UUID.randomUUID().toString();
+
+        Map<String, Object> logContext = new HashMap<>();
+        logContext.put("correlationId", correlationId);
+        logContext.put("orderUuid", order != null ? order.getUuid() : "null");
+        logContext.put("syncTaskId", syncTask != null ? syncTask.getSyncTask() : "null");
+
+        syncLogger.info("Starting lab result request", logContext);
+
         Map<String, Object> response = new HashMap<>();
         UgandaEMRHttpURLConnection connection = new UgandaEMRHttpURLConnection();
 
         if (!connection.isConnectionAvailable()) {
-            response.put("responseMessage", "No Internet Connection to send order " + safeAccession(order));
+            String message = "No Internet Connection to send order " + safeAccession(order);
+            syncLogger.logValidationError("connectionCheck", safeAccession(order), message);
+            response.put("responseMessage", message);
             return response;
         }
 
-        order = resolveOrder(order, syncTask, response);
-        if (order == null) {
+        Order resolvedOrder = resolveOrder(order, syncTask, response);
+        if (resolvedOrder == null) {
+            syncLogger.logValidationError("orderResolution", "null", "Failed to resolve order from sync task");
             return response;
         }
 
-        Map<String, String> requestPayload = buildRequestPayload(order, syncTask);
+        Map<String, String> requestPayload = buildRequestPayload(resolvedOrder, syncTask);
         if (requestPayload == null) {
-            response.put("responseMessage", "Failed to generate request payload");
+            String message = "Failed to generate request payload";
+            syncLogger.logValidationError("payloadGeneration", resolvedOrder.getAccessionNumber(), message);
+            response.put("responseMessage", message);
             return response;
         }
 
         SyncTaskType syncTaskType = getSyncTaskTypeByUUID(VIRAL_LOAD_RESULT_PULL_TYPE_UUID);
-        Map<String, Object> results = sendRequest(connection, syncTaskType, requestPayload, order, response);
 
-        if (results.isEmpty()) {
-            return response;
+        try {
+            // Use circuit breaker and retry logic for external API call
+            Map<String, Object> results = connection.executeWithCircuitBreaker(
+                    "CPHL",
+                    syncTaskType.getUrl(),
+                    () -> sendRequestWithRetry(connection, syncTaskType, requestPayload, resolvedOrder, correlationId, syncLogger)
+            );
+
+            if (results.isEmpty()) {
+                syncLogger.logValidationError("emptyResponse", resolvedOrder.getAccessionNumber(), "External service returned empty response");
+                return response;
+            }
+
+            processResults(results, resolvedOrder, syncTask, syncTaskType, response);
+
+            Map<String, Object> successContext = new HashMap<>();
+            successContext.put("correlationId", correlationId);
+            successContext.put("accessionNumber", resolvedOrder.getAccessionNumber());
+            syncLogger.info("Lab result request completed successfully", successContext);
+
+        } catch (Exception e) {
+            String message = String.format("Failed to request lab result: %s", e.getMessage());
+            syncLogger.logValidationError("externalServiceCall", resolvedOrder.getAccessionNumber(), message);
+            response.put("responseMessage", message);
         }
 
-        processResults(results, order, syncTask, syncTaskType, response);
         return response;
     }
 
@@ -2822,6 +2862,66 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         }
 
         return Collections.emptyMap();
+    }
+
+    /**
+     * Enhanced request method with retry logic and circuit breaker protection
+     * Uses the new infrastructure improvements for better resilience.
+     */
+    private Map<String, Object> sendRequestWithRetry(UgandaEMRHttpURLConnection connection,
+                                                      SyncTaskType syncTaskType,
+                                                      Map<String, String> payload,
+                                                      Order order,
+                                                      String correlationId,
+                                                      SyncLogger logger) throws Exception {
+
+        Map<String, Object> logContext = new HashMap<>();
+        logContext.put("correlationId", correlationId);
+        logContext.put("url", syncTaskType.getUrl());
+        logContext.put("accessionNumber", safeAccession(order));
+
+        syncLogger.info("Starting external API call with retry logic", logContext);
+
+        try {
+            // Use the new sendPostWithRetry method which includes retry logic and better error handling
+            Map<String, Object> result = connection.sendPostWithRetry(
+                    syncTaskType.getUrl(),
+                    payload.get("json").toString(),
+                    syncTaskType.getUrlUserName(),
+                    syncTaskType.getUrlPassword(),
+                    "application/json",
+                    "requestLabResult"
+            );
+
+            Map<String, Object> successContext = new HashMap<>();
+            successContext.put("correlationId", correlationId);
+            successContext.put("responseCode", result.get("responseCode"));
+            successContext.put("accessionNumber", safeAccession(order));
+
+            syncLogger.info("External API call successful", successContext);
+
+            return result;
+
+        } catch (Exception e) {
+            Map<String, Object> errorContext = new HashMap<>();
+            errorContext.put("url", syncTaskType.getUrl());
+            errorContext.put("accessionNumber", safeAccession(order));
+
+            syncLogger.logValidationError("externalAPI", errorContext,
+                    String.format("External API call failed: %s", e.getMessage()));
+
+            // Log transaction for failure
+            logTransaction(syncTaskType, 500, e.getMessage(),
+                          safeAccession(order), e.getMessage(),
+                          new Date(), syncTaskType.getUrl(), false, false);
+
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.EXTERNAL_SERVICE_UNAVAILABLE,
+                    String.format("Failed to call external service for order %s: %s",
+                                safeAccession(order), e.getMessage()),
+                    e
+            );
+        }
     }
 
     private void processResults(Map<String, Object> results, Order order, SyncTask syncTask, SyncTaskType syncTaskType, Map<String, Object> response) {
@@ -3197,18 +3297,11 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
     public List<Order> getOrders() throws IOException, ParseException {
-        OrderService orderService = Context.getOrderService();
-        List<Order> orders = new ArrayList<>();
-        List list = Context.getAdministrationService().executeSQL(VIRAL_LOAD_ORDERS_QUERY, true);
-        if (list.size() > 0) {
-            for (Object o : list) {
-                Order order = orderService.getOrder(Integer.parseUnsignedInt(((ArrayList) o).get(0).toString()));
-                if (order.getAccessionNumber() != null && order.isActive() && order.getInstructions().equalsIgnoreCase("REFER TO cphl")) {
-                    orders.add(order);
-                }
-            }
-        }
-        return orders;
+        // Get order IDs using optimized single query
+        List<Integer> orderIds = getViralLoadOrderIdsWithAccessionNumbers();
+
+        // Batch fetch all orders in one call instead of N+1 individual queries
+        return getOrdersByIds(orderIds);
     }
 
 
@@ -3769,6 +3862,208 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         }
 
         return referralOrderConceptList;
+    }
+
+    @Override
+    public List<Integer> getPatientsByOrderTypeAndDate(Integer orderTypeId, Date dateFrom) {
+        return dao.getPatientsByOrderTypeAndDate(orderTypeId, dateFrom);
+    }
+
+    @Override
+    public List<Integer> getPatientsByIdentifierTypeExcludingProfile(Integer identifierTypeId, Integer profileId) {
+        return dao.getPatientsByIdentifierTypeExcludingProfile(identifierTypeId, profileId);
+    }
+
+    @Override
+    public List<Integer> getPatientsByCohortType(String cohortTypeUuid) {
+        return dao.getPatientsByCohortType(cohortTypeUuid);
+    }
+
+    @Override
+    public List<Integer> getViralLoadOrderIdsWithAccessionNumbers() {
+        // Get the configured days boundary from global properties
+        SyncGlobalProperties syncGlobalProperties = new SyncGlobalProperties();
+        String daysString = syncGlobalProperties.getGlobalProperty(GP_VIRAL_LOAD_SYNC_DAYS_BOUNDARY);
+        int days = 90; // Default to 90 days if not configured
+        if (daysString != null && !daysString.isEmpty()) {
+            try {
+                days = Integer.parseInt(daysString);
+            } catch (NumberFormatException e) {
+                // If parsing fails, use default
+                days = 90;
+            }
+        }
+        return dao.getViralLoadOrderIdsWithAccessionNumbers(days);
+    }
+
+    /**
+     * Get viral load orders with custom days boundary
+     * @param days Number of days to look back for orders
+     * @return list of Order IDs for viral load orders with accession numbers
+     */
+    public List<Integer> getViralLoadOrderIdsWithAccessionNumbers(int days) {
+        return dao.getViralLoadOrderIdsWithAccessionNumbers(days);
+    }
+
+    @Override
+    public List<org.openmrs.Order> getOrdersByIds(List<Integer> orderIds) {
+        return dao.getOrdersByIds(orderIds);
+    }
+
+    // ===========================
+    // FHIR PROFILE SCHEDULING METHODS
+    // ===========================
+
+    @Override
+    public List<SyncFhirProfile> getScheduledProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> scheduledProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (profile.getScheduleEnabled() != null && profile.getScheduleEnabled()) {
+                scheduledProfiles.add(profile);
+            }
+        }
+        return scheduledProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getProfilesByScheduleType(String scheduleType) {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> matchingProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (scheduleType.equals(profile.getScheduleType())) {
+                matchingProfiles.add(profile);
+            }
+        }
+        return matchingProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getProfilesByTaskGroup(String taskGroup) {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> matchingProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if (taskGroup.equals(profile.getTaskGroup())) {
+                matchingProfiles.add(profile);
+            }
+        }
+        return matchingProfiles;
+    }
+
+    @Override
+    public void executeProfile(Integer profileId) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void executeProfileByName(String profileName) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void executeProfilesByGroup(String groupName) {
+        throw new UnsupportedOperationException("Use GenericFhirProfileSchedulerTask to execute profiles");
+    }
+
+    @Override
+    public void enableProfileSchedule(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            profile.setScheduleEnabled(true);
+            saveSyncFhirProfile(profile);
+        }
+    }
+
+    @Override
+    public void disableProfileSchedule(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            profile.setScheduleEnabled(false);
+            saveSyncFhirProfile(profile);
+        }
+    }
+
+    @Override
+    public List<SyncFhirProfile> getRunningProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> runningProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if ("RUNNING".equals(profile.getLastExecutionStatus())) {
+                runningProfiles.add(profile);
+            }
+        }
+        return runningProfiles;
+    }
+
+    @Override
+    public List<SyncFhirProfile> getFailedProfiles() {
+        List<SyncFhirProfile> allProfiles = getAllSyncFhirProfile();
+        List<SyncFhirProfile> failedProfiles = new ArrayList<>();
+        for (SyncFhirProfile profile : allProfiles) {
+            if ("FAILED".equals(profile.getLastExecutionStatus())) {
+                failedProfiles.add(profile);
+            }
+        }
+        return failedProfiles;
+    }
+
+    // ===========================
+    // EXECUTION HISTORY METHODS
+    // ===========================
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionHistoryByProfile(profile);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId, int limit, int offset) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionHistoryByProfile(profile, limit, offset);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getRecentExecutions(int limit) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.getRecentExecutions(limit);
+    }
+
+    @Override
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getFailedExecutions(int limit) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.getFailedExecutions(limit);
+    }
+
+    @Override
+    public org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.ExecutionStatistics getExecutionStats(Integer profileId) {
+        SyncFhirProfile profile = getSyncFhirProfileById(profileId);
+        if (profile != null) {
+            org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+                Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+            return historyDao.getExecutionStatistics(profile);
+        }
+        return new org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.ExecutionStatistics();
+    }
+
+    @Override
+    public org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory saveExecutionHistory(
+            org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory history) {
+        org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
+            Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
+        return historyDao.saveOrUpdate(history);
     }
 }
 

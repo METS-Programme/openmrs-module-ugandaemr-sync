@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "8ca0ffd0-0fb0-11f0-9e19-da924fd23489",
+    "name": "Sends Prescriptions eAFYA",
+    "description": "Sync task type for Sends Prescriptions eAFYA"
+  },
+  "configuration": {
+    "name": "Sends Prescriptions eAFYA",
+    "dataType": "org.openmrs.DrugOrder",
+    "dataTypeId": "",
+    "endpoint": {
+      "url": "192.168.1.2",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}

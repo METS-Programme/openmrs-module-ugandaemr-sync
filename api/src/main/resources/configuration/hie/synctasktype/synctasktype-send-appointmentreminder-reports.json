@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "08c5be38-1b79-4e27-b9ca-5da709aef5fe",
+    "name": "Send AppointmentReminder Reports",
+    "description": "Sync task type for Send AppointmentReminder Reports"
+  },
+  "configuration": {
+    "name": "Send AppointmentReminder Reports",
+    "dataType": "org.openmrs.Encounter",
+    "dataTypeId": "",
+    "endpoint": {
+      "url": "http://localhost:8000/api/sms/save",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}

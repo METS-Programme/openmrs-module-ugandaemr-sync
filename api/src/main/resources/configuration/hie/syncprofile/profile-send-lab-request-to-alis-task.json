@@ -1,0 +1,256 @@
+{
+  "metadata": {
+    "id": "2f0ef683-c988-448b-b928-e3e2cf6657af",
+    "name": "Send Lab Request to ALIS Task",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for Send Lab Request to ALIS Task",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "Send Lab Request to ALIS Task",
+    "resourceTypes": "Patient,Person,Encounter,Observation,ServiceRequest",
+    "isCaseBasedProfile": true,
+    "caseBasedPrimaryResourceType": "Order",
+    "caseBasedPrimaryResourceTypeId": "52a447d3-a64a-11e3-9aeb-50e549534c5e",
+    "resourceSearchParameter": {
+      "observationFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [
+          160741,
+          166421,
+          159367,
+          165043
+        ],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "patientFilter": {
+        "name": [],
+        "given": [],
+        "family": [],
+        "identifier": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deathDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "encounterFilter": {
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "location": [],
+        "participant": [],
+        "subject": [],
+        "type": [
+          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+        ],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "personFilter": {
+        "name": [],
+        "gender": [],
+        "birthDate": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "practitionerFilter": {
+        "identifier": [],
+        "name": [],
+        "given": [],
+        "family": [],
+        "deceased": [],
+        "city": [],
+        "state": [],
+        "postalCode": [],
+        "country": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "episodeofcareFilter": {
+        "type": [
+          ""
+        ],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "medicationdispenseFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "medicationrequestFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "diagnosticreportFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "conditionFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      },
+      "servicerequestFilter": {
+        "encounterReference": [],
+        "patientReference": [],
+        "hasMemberReference": [],
+        "valueConcept": "valueConceptUUIDS",
+        "valueDateParam": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "valueQuantityParam": [],
+        "valueStringParam": [],
+        "date": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        },
+        "code": [],
+        "category": [],
+        "id": [],
+        "lastUpdated": {
+          "lowerBound": "",
+          "myUpperBound": ""
+        }
+      }
+    },
+    "generateBundle": true,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": true,
+    "keepProfileIdentifierOnly": true,
+    "durationToKeepSyncedResources": 30,
+    "syncLimit": 50,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

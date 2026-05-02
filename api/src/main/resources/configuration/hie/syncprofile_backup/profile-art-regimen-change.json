@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "id": "4e0d3ff6-82ac-45a8-bcf3-7367a9098d65",
+    "name": "ART Regimen Change",
+    "category": "DEFAULT",
+    "description": "FHIR sync profile for ART Regimen Change",
+    "version": "1.0"
+  },
+  "configuration": {
+    "name": "ART Regimen Change",
+    "resourceTypes": "Patient,Person,Encounter,Observation",
+    "isCaseBasedProfile": false,
+    "caseBasedPrimaryResourceType": "Encounter",
+    "caseBasedPrimaryResourceTypeId": "c11774c1-3b4a-4bdb-a847-6060895e006d",
+    "resourceSearchParameter": "",
+    "generateBundle": false,
+    "numberOfResourcesInBundle": 100,
+    "profileEnabled": false,
+    "keepProfileIdentifierOnly": false,
+    "durationToKeepSyncedResources": 5,
+    "syncLimit": null,
+    "searchable": false,
+    "searchURL": "",
+    "patientIdentifierType": "4",
+    "patientIdentifierTypeName": ""
+  }
+}

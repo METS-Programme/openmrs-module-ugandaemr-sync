@@ -11,6 +11,8 @@ import org.openmrs.module.reporting.common.DateUtil;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.ugandaemrsync.web.resource.DTO.SyncTaskDetails;
 import org.openmrs.module.ugandaemrsync.web.resource.mapper.ConverterHelper;
 import org.openmrs.module.webservices.rest.SimpleObject;
@@ -19,10 +21,11 @@ import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
 import org.openmrs.module.webservices.rest.web.representation.DefaultRepresentation;
 import org.openmrs.module.webservices.rest.web.representation.FullRepresentation;
-import org.openmrs.module.webservices.rest.web.representation.RefRepresentation;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
@@ -34,7 +37,9 @@ import java.util.Date;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/synctaskdetails", supportedClass = SyncTaskDetails.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncTaskDetailsResource extends DelegatingCrudResource<SyncTaskDetails> {
+    private static final Logger logger = LoggerFactory.getLogger(SyncTaskDetailsResource.class);
 
 	@Override
 	public SyncTaskDetails newDelegate() {
@@ -47,6 +52,7 @@ public class SyncTaskDetailsResource extends DelegatingCrudResource<SyncTaskDeta
 	}
 
 	@Override
+	@Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
 	public SyncTaskDetails getByUniqueId(String uniqueId) {
 		SyncTask SyncTask = null;
 		Integer id = null;
@@ -57,7 +63,9 @@ public class SyncTaskDetailsResource extends DelegatingCrudResource<SyncTaskDeta
 			try {
 				id = Integer.parseInt(uniqueId);
 			}
-			catch (Exception e) {}
+			catch (Exception e) {
+			logger.warn("Failed to parse uniqueId as integer: {}", uniqueId, e);
+		}
 
 			if (id != null) {
 				SyncTask = Context.getService(UgandaEMRSyncService.class).getSyncTaskById(id);
@@ -69,6 +77,7 @@ public class SyncTaskDetailsResource extends DelegatingCrudResource<SyncTaskDeta
 	}
 
 	@Override
+	@Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
 	public NeedsPaging<SyncTaskDetails> doGetAll(RequestContext context) throws ResponseException {
 		List<SyncTask> syncTasks = Context.getService(UgandaEMRSyncService.class)
 				.getAllSyncTask();
@@ -116,6 +125,7 @@ public class SyncTaskDetailsResource extends DelegatingCrudResource<SyncTaskDeta
 	}
 
 	@Override
+	@Secured(privilege = SyncPrivileges.VIEW_SYNC_TASKS)
 	protected PageableResult doSearch(RequestContext context) {
 		UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
 

@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "f9b2fa5d-5d37-4fd9-b20a-a0cab664f520",
+    "name": "Send VL Program Data To CPHL",
+    "description": "Sync task type for Send VL Program Data To CPHL"
+  },
+  "configuration": {
+    "name": "Send VL Program Data To CPHL",
+    "dataType": "org.openmrs.TestOrder",
+    "dataTypeId": "315124004",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/vl-program/send?api_token=ZggUu6d4wahRY2MTcRN9BA9fHMla8SdOOwek0IsZcRTjOrjcGdzdEANJxpQX",
+      "username": "emrlabClient",
+      "password": "{{CONFIGURE_PASSWORD}}",
+      "token": "{{CONFIGURE_TOKEN}}"
+    }
+  }
+}

@@ -12,6 +12,8 @@ import org.openmrs.api.context.Context;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.ugandaemrsync.web.resource.DTO.ReferralOrder;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 import static org.openmrs.module.ugandaemrsync.server.SyncConstant.*;
 
 @Resource(name = RestConstants.VERSION_1 + "/referredorders", supportedClass = ReferralOrder.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder> {
 
 
@@ -49,6 +52,7 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_REFERRAL_ORDERS)
     public ReferralOrder getByUniqueId(String uniqueId) {
 
         ReferralOrder referralOrder = new ReferralOrder();
@@ -67,6 +71,7 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_REFERRAL_ORDERS)
     public NeedsPaging<ReferralOrder> doGetAll(RequestContext context) throws ResponseException {
 
         List<Concept> concepts = getConceptsFromSyncTaskType();
@@ -162,6 +167,7 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_REFERRAL_ORDERS)
     protected PageableResult doSearch(RequestContext context) {
         UgandaEMRSyncService syncService = Context.getService(UgandaEMRSyncService.class);
         OrderService orderService = Context.getOrderService();

@@ -9,8 +9,13 @@ import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.dto.exception.ConnectionException;
 import org.openmrs.module.ugandaemrsync.dto.exception.LabResultProcessingException;
 import org.openmrs.module.ugandaemrsync.dto.exception.ValidationException;
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
+import org.openmrs.module.ugandaemrsync.util.SyncLogger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.validation.ValidationUtils;
 import org.openmrs.module.ugandaemrsync.web.resource.DTO.SyncTestOrderSync;
 import org.openmrs.module.ugandaemrsync.web.response.LabResultResponseBuilder;
 import org.openmrs.module.ugandaemrsync.util.validation.LabResultRequestValidator;
@@ -28,6 +33,9 @@ import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceD
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
+import org.openmrs.module.ugandaemrsync.web.interceptor.ResourceSecurityInterceptor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,10 +51,13 @@ import static org.openmrs.module.ugandaemrsync.server.SyncConstant.*;
 @Resource(name = RestConstants.VERSION_1 + "/requestlabresult",
         supportedClass = SyncTestOrderSync.class,
         supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true, privilege = SyncPrivileges.VIEW_LAB_RESULTS)
 @Component
 public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOrderSync> {
 
     private static final Log log = LogFactory.getLog(RequestLabResultsResource.class);
+    private static final Logger logger = LoggerFactory.getLogger(RequestLabResultsResource.class);
+    private static final SyncLogger syncLogger = SyncLogger.getLogger(RequestLabResultsResource.class);
 
     // Validation and response components (would be injected via Spring in production)
     private final LabResultRequestValidator validator = new LabResultRequestValidator();
@@ -65,6 +76,7 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
     /**
      * Creates and processes a lab result request.
      * This method is transactional to ensure data consistency.
+     * External API calls are executed with circuit breaker protection and retry logic.
      *
      * @param propertiesToCreate Request properties containing order UUIDs
      * @param context Request context
@@ -72,89 +84,129 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
      * @throws ResponseException for validation or processing errors
      */
     @Override
+    @Secured(privilege = SyncPrivileges.MANAGE_LAB_RESULTS, rateLimit = 100)
     @Transactional
     public Object create(SimpleObject propertiesToCreate, RequestContext context) throws ResponseException {
+        // Security handled by @Secured annotation
         String correlationId = UUID.randomUUID().toString();
-        log.info(String.format("%s Starting lab result request processing",correlationId));
+        syncLogger.info("Starting lab result request processing",
+                createLogContext("correlationId", correlationId, "timestamp", new Date()));
 
         try {
-            // Step 1: Validate input
+            // Step 1: Validate input with enhanced validation
             validateInput(propertiesToCreate, correlationId);
 
             // Step 2: Check connection availability
             validateConnectionAvailability(correlationId);
 
-            // Step 3: Process orders
+            // Step 3: Process orders with circuit breaker and retry protection
             ProcessingResult result = processLabResultRequest(propertiesToCreate, correlationId);
 
             // Step 4: Build success response
-            log.info(String.format("[%s] Successfully processed %d orders", correlationId, result.getProcessedCount()));
+            syncLogger.info("Successfully processed lab result request",
+                    createLogContext("correlationId", correlationId,
+                                  "ordersProcessed", result.getProcessedCount(),
+                                  "ordersSuccessful", result.getSuccessCount(),
+                                  "ordersFailed", result.getErrorCount()));
+
             return buildSuccessResponse(result);
 
         } catch (ValidationException e) {
-            log.error(String.format("[%s] Validation error: %s", correlationId, e.getMessage()));
+            syncLogger.logValidationError("requestValidation", correlationId, "Validation failed: " + e.getMessage());
             throw new RuntimeException("Validation failed: " + e.getMessage(), e);
         } catch (ConnectionException e) {
-            log.error(String.format("[%s] Connection error: %s", correlationId, e.getMessage()));
+            syncLogger.logValidationError("connectionCheck", correlationId, "Connection failed: " + e.getMessage());
             throw new RuntimeException("Connection failed: " + e.getMessage(), e);
         } catch (LabResultProcessingException e) {
-            log.error(String.format("[%s] Processing error: %s", correlationId, e.getMessage()));
+            syncLogger.logValidationError("orderProcessing", correlationId, "Processing failed: " + e.getMessage());
             throw new RuntimeException("Processing failed: " + e.getMessage(), e);
+        } catch (UgandaEMRSyncException e) {
+            syncLogger.logValidationError("syncOperation", correlationId, "Sync operation failed: " + e.getMessage());
+            throw new RuntimeException("Sync operation failed: " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error(String.format("[%s] Unexpected error: %s", correlationId, e.getMessage()), e);
+            syncLogger.logValidationError("unexpectedError", correlationId, "Internal error: " + e.getMessage());
             throw new RuntimeException("Internal error: " + e.getMessage(), e);
         }
     }
 
     /**
      * Validates the input request properties.
+     * Enhanced with additional validation using ValidationUtils.
      */
-    private void validateInput(SimpleObject propertiesToCreate, String correlationId) throws ValidationException {
-        log.debug(String.format("[%s] Validating input request", correlationId));
+    private void validateInput(SimpleObject propertiesToCreate, String correlationId) throws ValidationException, UgandaEMRSyncException {
+        Map<String, Object> logContext = new HashMap<>();
+        logContext.put("correlationId", correlationId);
+        syncLogger.info("Starting input validation", logContext);
 
         if (propertiesToCreate == null) {
+            syncLogger.logValidationError("requestBody", null, "Request body cannot be null");
             throw new ValidationException("request", "Request body cannot be null", null);
         }
 
         Object ordersObject = propertiesToCreate.get("orders");
         if (!(ordersObject instanceof List)) {
+            syncLogger.logValidationError("orders", ordersObject, "Orders must be a list");
             throw new ValidationException("orders", "Orders must be a list", ordersObject);
         }
 
         @SuppressWarnings("unchecked")
         List<String> orderUuids = (List<String>) ordersObject;
 
-        // Convert to list of strings if needed
-        List<String> stringUuids = orderUuids.stream()
-                .map(String::valueOf)
-                .collect(Collectors.toList());
+        // Convert to list of strings if needed and validate each UUID
+        List<String> stringUuids = new ArrayList<>();
+        for (Object orderUuid : orderUuids) {
+            String uuidStr = String.valueOf(orderUuid);
+
+            // Additional validation using ValidationUtils
+            try {
+                ValidationUtils.requireValidUUID("orders[" + stringUuids.size() + "]", uuidStr);
+                ValidationUtils.requireNoSQLInjection("orders[" + stringUuids.size() + "]", uuidStr);
+            } catch (UgandaEMRSyncException e) {
+                syncLogger.logValidationError("uuidValidation", uuidStr, e.getMessage());
+                throw new ValidationException("orders[" + stringUuids.size() + "]",
+                        "Invalid UUID format: " + e.getMessage(), uuidStr);
+            }
+
+            stringUuids.add(uuidStr);
+        }
+
+        // Validate collection size
+        try {
+            ValidationUtils.requireCollectionSize("orders", stringUuids, 1, 100);
+        } catch (UgandaEMRSyncException e) {
+            syncLogger.logValidationError("ordersSize", stringUuids.size(), e.getMessage());
+            throw new ValidationException("orders", e.getMessage(), stringUuids.size());
+        }
 
         validator.validateRequest(stringUuids);
 
-        log.debug(String.format("[%s] Input validation passed for %d orders", correlationId, stringUuids.size()));
+        syncLogger.info("Input validation passed",
+                createLogContext("correlationId", correlationId, "orderCount", stringUuids.size()));
     }
 
     /**
      * Validates that network connection is available.
+     * Enhanced with structured logging and better error handling.
      */
     private void validateConnectionAvailability(String correlationId) throws ConnectionException {
-        log.debug(String.format("[%s] Checking connection availability", correlationId));
+        syncLogger.info("Checking connection availability", createLogContext("correlationId", correlationId));
 
         UgandaEMRHttpURLConnection connection = new UgandaEMRHttpURLConnection();
         if (!connection.isConnectionAvailable()) {
             String message = "No internet connection to get lab results from CPHL";
-            log.warn(String.format("[%s] Connection unavailable", correlationId));
+            syncLogger.logValidationError("connectionCheck", "CPHL", message);
             throw new ConnectionException(message, "CPHL", -1, -1);
         }
 
-        log.debug(String.format("[%s] Connection available", correlationId));
+        syncLogger.info("Connection available", createLogContext("correlationId", correlationId));
     }
 
     /**
      * Processes the lab result request for all orders.
+     * Enhanced with structured logging and better error tracking.
      */
     private ProcessingResult processLabResultRequest(SimpleObject propertiesToCreate, String correlationId) {
-        log.debug(String.format("[%s] Processing lab result request", correlationId));
+        syncLogger.info("Processing lab result request", createLogContext("correlationId", correlationId));
 
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
         SyncTaskType syncTaskType = ugandaEMRSyncService.getSyncTaskTypeByUUID(VIRAL_LOAD_SYNC_TASK_TYPE_UUID);
@@ -162,17 +214,31 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
         List<String> orderUuids = extractOrderUuids(propertiesToCreate);
         ProcessingResult result = new ProcessingResult();
 
-        for (String orderUuid : orderUuids) {
+        syncLogger.info("Starting batch order processing",
+                createLogContext("correlationId", correlationId, "totalOrders", orderUuids.size()));
+
+        for (int i = 0; i < orderUuids.size(); i++) {
+            String orderUuid = orderUuids.get(i);
             try {
+                syncLogger.info("Processing individual order",
+                        createLogContext("correlationId", correlationId,
+                              "orderUuid", orderUuid,
+                              "progress", String.format("%d/%d", i + 1, orderUuids.size())));
+
                 processSingleOrder(orderUuid, syncTaskType, ugandaEMRSyncService, result, correlationId);
+
             } catch (Exception e) {
-                log.error(String.format("[%s] Failed to process order %s: %s", correlationId, orderUuid, e.getMessage()));
-                result.addError(orderUuid, e.getMessage());
+                String errorMsg = String.format("Failed to process order: %s", e.getMessage());
+                syncLogger.logValidationError("orderProcessing", orderUuid, errorMsg);
+                result.addError(orderUuid, errorMsg);
             }
         }
 
-        log.info(String.format("[%s] Processing complete: %d successful, %d failed",
-                correlationId, result.getSuccessCount(), result.getErrorCount()));
+        syncLogger.info("Batch processing complete",
+                createLogContext("correlationId", correlationId,
+                      "successful", result.getSuccessCount(),
+                      "failed", result.getErrorCount(),
+                      "total", result.getTotalProcessed()));
 
         return result;
     }
@@ -192,42 +258,67 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
 
     /**
      * Processes a single order for lab results.
+     * Enhanced with structured logging and better error handling.
      */
     private void processSingleOrder(String orderUuid, SyncTaskType syncTaskType,
                                    UgandaEMRSyncService ugandaEMRSyncService,
                                    ProcessingResult result, String correlationId) {
-        log.debug(String.format("[%s] Processing order: %s", correlationId, orderUuid));
 
-        Order order = Context.getOrderService().getOrderByUuid(orderUuid);
-        if (order == null) {
-            String message = String.format("Order not found: %s", orderUuid);
-            log.warn(String.format("[%s] %s", correlationId, message));
+        syncLogger.info("Processing single order", createLogContext("correlationId", correlationId, "orderUuid", orderUuid));
+
+        try {
+            Order order = Context.getOrderService().getOrderByUuid(orderUuid);
+            if (order == null) {
+                String message = String.format("Order not found: %s", orderUuid);
+                syncLogger.logValidationError("orderLookup", orderUuid, message);
+                result.addError(orderUuid, message);
+                return;
+            }
+
+            syncLogger.info("Order found, looking up sync tasks",
+                    createLogContext("correlationId", correlationId,
+                          "orderUuid", orderUuid,
+                          "accessionNumber", order.getAccessionNumber()));
+
+            List<SyncTask> syncTasks = ugandaEMRSyncService.getSyncTasksBySyncTaskId(order.getAccessionNumber())
+                    .stream()
+                    .filter(task -> task.getSyncTaskType().equals(syncTaskType))
+                    .collect(Collectors.toList());
+
+            if (syncTasks.isEmpty()) {
+                String message = String.format("No sync task found for order: %s", order.getAccessionNumber());
+                syncLogger.logValidationError("syncTaskLookup", order.getAccessionNumber(), message);
+                result.addError(orderUuid, message);
+                return;
+            }
+
+            SyncTask syncTask = syncTasks.get(0);
+            if (!isValidSyncTask(syncTask)) {
+                String message = String.format("Order %s does not qualify to receive results", order.getAccessionNumber());
+                syncLogger.logValidationError("syncTaskValidation", order.getAccessionNumber(), message);
+                result.addError(orderUuid, message);
+                return;
+            }
+
+            syncLogger.info("Calling external service for lab results",
+                    createLogContext("correlationId", correlationId,
+                          "orderUuid", orderUuid,
+                          "syncTaskId", syncTask.getSyncTask()));
+
+            Map<String, Object> response = ugandaEMRSyncService.requestLabResult(order, syncTask);
+
+            syncLogger.info("External service call completed",
+                    createLogContext("correlationId", correlationId,
+                          "orderUuid", orderUuid,
+                          "responseCode", response.getOrDefault("responseCode", "N/A")));
+
+            result.addSuccess(order, response);
+
+        } catch (Exception e) {
+            String message = String.format("Exception processing order: %s", e.getMessage());
+            syncLogger.logValidationError("orderProcessingException", orderUuid, message);
             result.addError(orderUuid, message);
-            return;
         }
-
-        List<SyncTask> syncTasks = ugandaEMRSyncService.getSyncTasksBySyncTaskId(order.getAccessionNumber())
-                .stream()
-                .filter(task -> task.getSyncTaskType().equals(syncTaskType))
-                .collect(Collectors.toList());
-
-        if (syncTasks.isEmpty()) {
-            String message = String.format("No sync task found for order: %s", order.getAccessionNumber());
-            log.warn(String.format("[%s] %s", correlationId, message));
-            result.addError(orderUuid, message);
-            return;
-        }
-
-        SyncTask syncTask = syncTasks.get(0);
-        if (!isValidSyncTask(syncTask)) {
-            String message = String.format("Order %s does not qualify to receive results", order.getAccessionNumber());
-            log.warn(String.format("[%s] %s", correlationId, message));
-            result.addError(orderUuid, message);
-            return;
-        }
-
-        Map<String, Object> response = ugandaEMRSyncService.requestLabResult(order, syncTask);
-        result.addSuccess(order, response);
     }
 
     /**
@@ -249,14 +340,22 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
 
     /**
      * Builds a success response from the processing result.
+     * Enhanced with structured logging for response tracking.
      */
     private SimpleObject buildSuccessResponse(ProcessingResult result) {
+        syncLogger.info("Building success response",
+                createLogContext("totalProcessed", result.getTotalProcessed(),
+                      "successful", result.getSuccessCount(),
+                      "failed", result.getErrorCount()));
+
         Map<String, Object> allResponses = new HashMap<>();
 
+        // Process successful results
         for (Map.Entry<String, Map<String, Object>> entry : result.getSuccessResults().entrySet()) {
             allResponses.put(entry.getKey(), entry.getValue());
         }
 
+        // Process error results
         for (Map.Entry<String, String> entry : result.getErrors().entrySet()) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("status", "error");
@@ -264,7 +363,13 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
             allResponses.put(entry.getKey(), errorResponse);
         }
 
-        return responseBuilder.buildSuccessResponse(result.getTotalProcessed(), allResponses);
+        SimpleObject response = responseBuilder.buildSuccessResponse(result.getTotalProcessed(), allResponses);
+
+        syncLogger.info("Response building completed",
+                createLogContext("responseSize", allResponses.size(),
+                      "timestamp", new Date()));
+
+        return response;
     }
 
     @Override
@@ -337,6 +442,20 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
     /**
      * Internal class to track processing results.
      */
+
+    /**
+     * Helper method to create log context maps for Java 8 compatibility
+     * Replaces Map.of() which is only available in Java 9+
+     */
+    private Map<String, Object> createLogContext(Object... keyValuePairs) {
+        Map<String, Object> context = new HashMap<>();
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            if (i + 1 < keyValuePairs.length) {
+                context.put(String.valueOf(keyValuePairs[i]), keyValuePairs[i + 1]);
+            }
+        }
+        return context;
+    }
     private static class ProcessingResult {
         private final Map<String, Map<String, Object>> successResults = new HashMap<>();
         private final Map<String, String> errors = new HashMap<>();
@@ -373,6 +492,19 @@ public class RequestLabResultsResource extends DelegatingCrudResource<SyncTestOr
 
         public int getProcessedCount() {
             return successResults.size();
+        }
+    }
+
+    /**
+     * Helper method to get current method reference for security checks.
+     * Used by ResourceSecurityInterceptor to determine security requirements.
+     */
+    private java.lang.reflect.Method getCurrentMethod() {
+        try {
+            String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
+            return this.getClass().getMethod(methodName, SimpleObject.class, RequestContext.class);
+        } catch (Exception e) {
+            return null;
         }
     }
 }

@@ -39,6 +39,24 @@ public class SyncFhirResource extends BaseOpenmrsData implements Serializable {
     @Column(name = "expiry_date")
     private Date expiryDate;
 
+    @Column(name = "last_sync_attempt")
+    private Date lastSyncAttempt;
+
+    @Column(name = "consecutive_failure_count")
+    private Integer consecutiveFailureCount;
+
+    @Column(name = "last_sync_error_type", length = 100)
+    private String lastSyncErrorType;
+
+    @Column(name = "last_sync_error_message", length = 1000)
+    private String lastSyncErrorMessage;
+
+    @Column(name = "sync_retry_count")
+    private Integer syncRetryCount;
+
+    @Column(name = "last_successful_sync_date")
+    private Date lastSuccessfulSyncDate;
+
     @ManyToOne
     @JoinColumn(name = "generator_profile")
     private SyncFhirProfile generatorProfile;
@@ -134,5 +152,97 @@ public class SyncFhirResource extends BaseOpenmrsData implements Serializable {
 
     public void setPatient(Patient patient) {
         this.patient = patient;
+    }
+
+    public Date getLastSyncAttempt() {
+        return lastSyncAttempt;
+    }
+
+    public void setLastSyncAttempt(Date lastSyncAttempt) {
+        this.lastSyncAttempt = lastSyncAttempt;
+    }
+
+    public Integer getConsecutiveFailureCount() {
+        return consecutiveFailureCount;
+    }
+
+    public void setConsecutiveFailureCount(Integer consecutiveFailureCount) {
+        this.consecutiveFailureCount = consecutiveFailureCount;
+    }
+
+    public String getLastSyncErrorType() {
+        return lastSyncErrorType;
+    }
+
+    public void setLastSyncErrorType(String lastSyncErrorType) {
+        this.lastSyncErrorType = lastSyncErrorType;
+    }
+
+    public String getLastSyncErrorMessage() {
+        return lastSyncErrorMessage;
+    }
+
+    public void setLastSyncErrorMessage(String lastSyncErrorMessage) {
+        this.lastSyncErrorMessage = lastSyncErrorMessage;
+    }
+
+    public Integer getSyncRetryCount() {
+        return syncRetryCount;
+    }
+
+    public void setSyncRetryCount(Integer syncRetryCount) {
+        this.syncRetryCount = syncRetryCount;
+    }
+
+    public Date getLastSuccessfulSyncDate() {
+        return lastSuccessfulSyncDate;
+    }
+
+    public void setLastSuccessfulSyncDate(Date lastSuccessfulSyncDate) {
+        this.lastSuccessfulSyncDate = lastSuccessfulSyncDate;
+    }
+
+    /**
+     * Updates sync status on successful sync
+     */
+    public void markAsSuccessfullySynced(Date syncDate) {
+        this.synced = true;
+        this.dateSynced = syncDate;
+        this.lastSyncAttempt = syncDate;
+        this.lastSuccessfulSyncDate = syncDate;
+        this.consecutiveFailureCount = 0;
+        this.lastSyncErrorType = null;
+        this.lastSyncErrorMessage = null;
+    }
+
+    /**
+     * Updates sync status on failed sync attempt
+     */
+    public void markAsSyncFailed(Date attemptDate, SyncErrorType errorType, String errorMessage) {
+        this.synced = false;
+        this.lastSyncAttempt = attemptDate;
+        this.lastSyncErrorType = errorType.name();
+        this.lastSyncErrorMessage = errorMessage;
+
+        // Increment consecutive failure count
+        if (this.consecutiveFailureCount == null) {
+            this.consecutiveFailureCount = 1;
+        } else {
+            this.consecutiveFailureCount++;
+        }
+
+        // Increment retry count
+        if (this.syncRetryCount == null) {
+            this.syncRetryCount = 1;
+        } else {
+            this.syncRetryCount++;
+        }
+    }
+
+    /**
+     * Checks if this resource has exceeded the maximum allowed consecutive failures
+     */
+    public boolean hasExceededMaxFailures(int maxAllowedFailures) {
+        return this.consecutiveFailureCount != null && this.consecutiveFailureCount > maxAllowedFailures;
     }
 }

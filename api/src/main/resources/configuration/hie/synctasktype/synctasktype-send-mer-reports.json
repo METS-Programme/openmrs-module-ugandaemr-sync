@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "id": "6ebd85c8-127b-4c88-8a40-27defef367a9",
+    "name": "Send MER Reports",
+    "description": "Sync task type for Send MER Reports"
+  },
+  "configuration": {
+    "name": "Send MER Reports",
+    "dataType": "org.openmrs.Encounter",
+    "dataTypeId": "",
+    "endpoint": {
+      "url": "http://ugisl.mets.or.ug/adx-mer",
+      "username": null,
+      "password": null,
+      "token": null
+    }
+  }
+}

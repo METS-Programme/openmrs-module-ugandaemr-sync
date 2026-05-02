@@ -8,6 +8,8 @@ import io.swagger.models.properties.StringProperty;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
@@ -27,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncfhircase", supportedClass = SyncFhirCase.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncFhirCaseResource extends DelegatingCrudResource<SyncFhirCase> {
 
     @Override
@@ -35,11 +38,13 @@ public class SyncFhirCaseResource extends DelegatingCrudResource<SyncFhirCase> {
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.MANAGE_FHIR_CASES)
     public SyncFhirCase save(SyncFhirCase SyncFhirCase) {
         return Context.getService(UgandaEMRSyncService.class).saveSyncFHIRCase(SyncFhirCase);
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_CASES)
     public SyncFhirCase getByUniqueId(String uniqueId) {
         SyncFhirCase syncFhirCase = null;
         Integer id = null;
@@ -60,6 +65,7 @@ public class SyncFhirCaseResource extends DelegatingCrudResource<SyncFhirCase> {
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_CASES)
     public NeedsPaging<SyncFhirCase> doGetAll(RequestContext context) throws ResponseException {
         return new NeedsPaging<SyncFhirCase>(new ArrayList<SyncFhirCase>(Context.getService(UgandaEMRSyncService.class)
                 .getAllSyncFhirCase()), context);
@@ -134,6 +140,7 @@ public class SyncFhirCaseResource extends DelegatingCrudResource<SyncFhirCase> {
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_CASES)
     protected PageableResult doSearch(RequestContext context) {
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
 

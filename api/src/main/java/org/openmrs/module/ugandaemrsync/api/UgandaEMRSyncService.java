@@ -567,5 +567,163 @@ public interface UgandaEMRSyncService extends OpenmrsService {
 
 
     public List getReferralOrderConcepts();
+
+    /**
+     * Secure method to get patients by order type and date
+     * @param orderTypeId the order type ID
+     * @param dateFrom the start date
+     * @return list of patient IDs
+     */
+    public List<Integer> getPatientsByOrderTypeAndDate(Integer orderTypeId, Date dateFrom);
+
+    /**
+     * Secure method to get patients by identifier type excluding existing cases
+     * @param identifierTypeId the patient identifier type ID
+     * @param profileId the sync profile ID
+     * @return list of patient IDs
+     */
+    public List<Integer> getPatientsByIdentifierTypeExcludingProfile(Integer identifierTypeId, Integer profileId);
+
+    /**
+     * Secure method to get patients by cohort type
+     * @param cohortTypeUuid the cohort type UUID
+     * @return list of patient IDs
+     */
+    public List<Integer> getPatientsByCohortType(String cohortTypeUuid);
+
+    /**
+     * Get viral load orders with accession numbers (optimized)
+     * Uses default time boundary from global properties (90 days)
+     * @return list of Order IDs for viral load orders with accession numbers within the time boundary
+     */
+    public List<Integer> getViralLoadOrderIdsWithAccessionNumbers();
+
+    /**
+     * Get viral load orders with custom days boundary
+     * @param days Number of days to look back for orders (prevents querying all historical data)
+     * @return list of Order IDs for viral load orders with accession numbers within the time boundary
+     */
+    public List<Integer> getViralLoadOrderIdsWithAccessionNumbers(int days);
+
+    /**
+     * Batch get orders by IDs to avoid N+1 queries
+     * @param orderIds list of order IDs to fetch
+     * @return list of Orders
+     */
+    public List<org.openmrs.Order> getOrdersByIds(List<Integer> orderIds);
+
+    // ===========================
+    // FHIR PROFILE SCHEDULING METHODS
+    // ===========================
+
+    /**
+     * Get all profiles that have scheduling enabled
+     * @return list of scheduled profiles
+     */
+    public List<SyncFhirProfile> getScheduledProfiles();
+
+    /**
+     * Get profiles by schedule type
+     * @param scheduleType the schedule type (CRON, FIXED_RATE, FIXED_DELAY, MANUAL)
+     * @return list of profiles with the specified schedule type
+     */
+    public List<SyncFhirProfile> getProfilesByScheduleType(String scheduleType);
+
+    /**
+     * Get profiles by task group
+     * @param taskGroup the task group name
+     * @return list of profiles in the specified group
+     */
+    public List<SyncFhirProfile> getProfilesByTaskGroup(String taskGroup);
+
+    /**
+     * Execute a specific profile by ID
+     * @param profileId the profile ID to execute
+     */
+    public void executeProfile(Integer profileId);
+
+    /**
+     * Execute a specific profile by name
+     * @param profileName the profile name to execute
+     */
+    public void executeProfileByName(String profileName);
+
+    /**
+     * Execute all profiles in a task group
+     * @param groupName the task group name
+     */
+    public void executeProfilesByGroup(String groupName);
+
+    /**
+     * Enable scheduling for a profile
+     * @param profileId the profile ID
+     */
+    public void enableProfileSchedule(Integer profileId);
+
+    /**
+     * Disable scheduling for a profile
+     * @param profileId the profile ID
+     */
+    public void disableProfileSchedule(Integer profileId);
+
+    /**
+     * Get profiles that are currently running
+     * @return list of running profiles
+     */
+    public List<SyncFhirProfile> getRunningProfiles();
+
+    /**
+     * Get profiles that have failed
+     * @return list of failed profiles
+     */
+    public List<SyncFhirProfile> getFailedProfiles();
+
+    // ===========================
+    // EXECUTION HISTORY METHODS
+    // ===========================
+
+    /**
+     * Get execution history for a profile
+     * @param profileId the profile ID
+     * @return list of execution history records
+     */
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId);
+
+    /**
+     * Get execution history for a profile with pagination
+     * @param profileId the profile ID
+     * @param limit maximum number of records
+     * @param offset starting offset
+     * @return list of execution history records
+     */
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getExecutionHistory(Integer profileId, int limit, int offset);
+
+    /**
+     * Get recent executions across all profiles
+     * @param limit maximum number of records
+     * @return list of execution history records
+     */
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getRecentExecutions(int limit);
+
+    /**
+     * Get failed executions across all profiles
+     * @param limit maximum number of records
+     * @return list of execution history records
+     */
+    public List<org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory> getFailedExecutions(int limit);
+
+    /**
+     * Get execution statistics for a profile
+     * @param profileId the profile ID
+     * @return execution statistics
+     */
+    public org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.ExecutionStatistics getExecutionStats(Integer profileId);
+
+    /**
+     * Save execution history record
+     * @param history the execution history to save
+     * @return saved execution history
+     */
+    public org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory saveExecutionHistory(org.openmrs.module.ugandaemrsync.model.SyncFhirProfileExecutionHistory history);
 }
 

@@ -6,6 +6,8 @@ import org.openmrs.module.reporting.report.definition.service.ReportDefinitionSe
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.ugandaemrsync.server.SyncGlobalProperties;
 import org.openmrs.module.ugandaemrsync.tasks.SendReportsTask;
 import org.openmrs.module.webservices.rest.SimpleObject;
@@ -31,6 +33,7 @@ public class SendReportsResource {
     @ExceptionHandler(APIAuthenticationException.class)
     @RequestMapping(method = RequestMethod.POST)
     @ResponseBody
+    @Secured(privilege = SyncPrivileges.SEND_REPORTS, rateLimit = 20)
     public Object sendReport(@RequestParam("uuid")String reportUuid, @RequestBody String body) {
         return sendData(body,reportUuid);
     }

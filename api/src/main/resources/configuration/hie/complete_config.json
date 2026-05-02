@@ -1,0 +1,184 @@
+{
+  "export": {
+    "version": "1.0",
+    "exportedAt": "2024-05-01T10:30:00Z",
+    "metadata": {
+      "exportedBy": "system",
+      "sourceInstance": "openmrs-ugandaemr-sync-2.0.6",
+      "version": "1.0",
+      "description": "Complete UgandaEMR Sync Configuration - Task Types, Profiles, and Schedules",
+      "tags": [
+        "complete",
+        "initial",
+        "production"
+      ]
+    },
+    "taskTypes": [
+      {
+        "metadata": {
+          "id": "3551ca84-06c0-432b-9064-fcfeefd6f4ec",
+          "name": "Send Viral Load To CPHL",
+          "category": "LAB_EXCHANGE",
+          "description": "Sends viral load test orders to CPHL (Central Public Health Laboratories)",
+          "version": "1.0",
+          "author": "METS Programme",
+          "tags": [
+            "viral-load",
+            "lab",
+            "cphl"
+          ]
+        },
+        "configuration": {
+          "name": "Send Viral Load To CPHL",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.SendViralLoadRequestToCentralServerTask",
+          "taskType": "DATA_SEND",
+          "schedule": {
+            "enabled": true,
+            "name": "Send Viral Load Request to Central Server Task",
+            "description": "Sends a viral load request to the central server",
+            "startTimePattern": "MM/dd/yyyy HH:mm:ss",
+            "startTime": "2019-06-27T11:59:59",
+            "repeatInterval": 3600,
+            "startOnStartup": true,
+            "started": true
+          }
+        }
+      },
+      {
+        "metadata": {
+          "id": "4c4e9551-d9d6-4882-93bd-e61a42e2f755",
+          "name": "Receive ART Access Visits Data",
+          "category": "DATA_IMPORT",
+          "description": "Receives patient visit data from ART Access system"
+        },
+        "configuration": {
+          "name": "Receive ART Access Visits Data",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.ReceiveVisitsDataFromARTAccessTask"
+        }
+      },
+      {
+        "metadata": {
+          "id": "18dc5ffa-cf2a-471e-aff4-c0449909f81c",
+          "name": "Request Viral Load Results form CPHL"
+        },
+        "configuration": {
+          "name": "Request Viral Load Results form CPHL",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.ReceiveViralLoadResultFromCentralServerTask",
+          "schedule": {
+            "enabled": true,
+            "name": "Request Viral Results",
+            "description": "Request for viral load results from central server",
+            "startTimePattern": "MM/dd/yyyy HH:mm:ss",
+            "startTime": "2019-06-27T11:59:59",
+            "repeatInterval": 3600
+          }
+        }
+      },
+      {
+        "metadata": {
+          "id": "tasktype-ugandaemr-sync",
+          "name": "UgandaEMR Sync Task"
+        },
+        "configuration": {
+          "name": "UgandaEMR Sync Task",
+          "description": "Synchronises Data to given Server",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.SendAllDataCentralServerTask",
+          "taskType": "FHIR_SYNC"
+        }
+      },
+      {
+        "metadata": {
+          "id": "tasktype-hiv-surveillance",
+          "name": "HIV CASE BASED SURVEILLANCE"
+        },
+        "configuration": {
+          "name": "HIV CASE BASED SURVEILLANCE",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.HIVCaseBasedSurveillanceTask",
+          "taskType": "FHIR_SYNC"
+        }
+      },
+      {
+        "metadata": {
+          "id": "tasktype-send-fhir",
+          "name": "Send Generated Fhir Resources"
+        },
+        "configuration": {
+          "name": "Send Generated Fhir Resources",
+          "taskClass": "org.openmrs.module.ugandaemrsync.tasks.SendFhirResourceTask",
+          "taskType": "FHIR_SEND"
+        }
+      }
+    ],
+    "profiles": [
+      {
+        "metadata": {
+          "id": "profile-example-resource-based",
+          "name": "Example Profile",
+          "category": "DEFAULT",
+          "description": "Example resource-based FHIR sync profile"
+        },
+        "configuration": {
+          "resourceTypes": "Encounter,Patient,Observation",
+          "isCaseBasedProfile": false,
+          "resourceSearchParameter": {
+            "observationFilter": {
+              "encounterReference": [],
+              "patientReference": [],
+              "hasMemberReference": [],
+              "valueConcept": [],
+              "valueDateParam": {
+                "lowerBound": "",
+                "upperBound": ""
+              }
+            }
+          },
+          "generateBundle": true,
+          "numberOfResourcesInBundle": 50,
+          "profileEnabled": true,
+          "patientIdentifierType": 4,
+          "patientIdentifierTypeName": "HIV Clinic No.",
+          "durationToKeepSyncedResources": 30,
+          "endpoint": {
+            "url": "http://exampleurl.com",
+            "authentication": "BASIC",
+            "username": "username",
+            "password": "{{CONFIGURE_PASSWORD}}"
+          }
+        }
+      },
+      {
+        "metadata": {
+          "id": "profile-example-case-based",
+          "name": "Case Example Profile",
+          "category": "DEFAULT",
+          "description": "Example case-based FHIR sync profile"
+        },
+        "configuration": {
+          "resourceTypes": "Encounter,Patient,Observation",
+          "isCaseBasedProfile": true,
+          "caseBasedPrimaryResourceType": "Encounter",
+          "caseBasedPrimaryResourceTypeId": "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f",
+          "resourceSearchParameter": {
+            "encounterFilter": {
+              "type": [
+                "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+              ]
+            }
+          },
+          "generateBundle": true,
+          "numberOfResourcesInBundle": 50,
+          "profileEnabled": true,
+          "patientIdentifierType": 4,
+          "patientIdentifierTypeName": "HIV Clinic No.",
+          "durationToKeepSyncedResources": 30,
+          "endpoint": {
+            "url": "http://exampleurl.com",
+            "authentication": "BASIC",
+            "username": "username",
+            "password": "{{CONFIGURE_PASSWORD}}"
+          }
+        }
+      }
+    ]
+  }
+}

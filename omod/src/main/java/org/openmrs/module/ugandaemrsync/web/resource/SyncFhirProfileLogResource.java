@@ -7,6 +7,8 @@ import io.swagger.models.properties.StringProperty;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirProfileLog;
+import org.openmrs.module.ugandaemrsync.security.Secured;
+import org.openmrs.module.ugandaemrsync.security.SyncPrivileges;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
@@ -26,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Resource(name = RestConstants.VERSION_1 + "/syncfhirprofilelog", supportedClass = SyncFhirProfileLog.class, supportedOpenmrsVersions = {"1.9.* - 9.*"})
+@Secured(authenticated = true)
 public class SyncFhirProfileLogResource extends DelegatingCrudResource<SyncFhirProfileLog> {
 
     @Override
@@ -34,11 +37,13 @@ public class SyncFhirProfileLogResource extends DelegatingCrudResource<SyncFhirP
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.MANAGE_FHIR_PROFILES)
     public SyncFhirProfileLog save(SyncFhirProfileLog SyncFhirProfileLog) {
         return Context.getService(UgandaEMRSyncService.class).saveSyncFhirProfileLog(SyncFhirProfileLog);
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_PROFILES)
     public SyncFhirProfileLog getByUniqueId(String uniqueId) {
         SyncFhirProfileLog syncFfhirProfile = null;
         Integer id = null;
@@ -59,6 +64,7 @@ public class SyncFhirProfileLogResource extends DelegatingCrudResource<SyncFhirP
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_PROFILES)
     public NeedsPaging<SyncFhirProfileLog> doGetAll(RequestContext context) throws ResponseException {
         return new NeedsPaging<SyncFhirProfileLog>(new ArrayList<SyncFhirProfileLog>(Context.getService(UgandaEMRSyncService.class)
                 .getAllSyncFhirProfileLog()), context);
@@ -133,6 +139,7 @@ public class SyncFhirProfileLogResource extends DelegatingCrudResource<SyncFhirP
     }
 
     @Override
+    @Secured(privilege = SyncPrivileges.VIEW_FHIR_PROFILES)
     protected PageableResult doSearch(RequestContext context) {
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
 
