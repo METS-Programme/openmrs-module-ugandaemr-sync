@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
-                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+                  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
 
     <!-- Add scheduling configuration fields to sync_fhir_profile table -->
     <changeSet id="20240501-add-profile-scheduling-fields" author="slubwama">
@@ -123,17 +125,17 @@
         </preConditions>
 
         <!-- Add indexes for performance -->
-        <addIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled">
+        <createIndex tableName="sync_fhir_profile" indexName="idx_schedule_enabled" unique="false">
             <column name="schedule_enabled"/>
-        </addIndex>
+        </createIndex>
 
-        <addIndex tableName="sync_fhir_profile" indexName="idx_task_group">
+        <createIndex tableName="sync_fhir_profile" indexName="idx_task_group" unique="false">
             <column name="task_group"/>
-        </addIndex>
+        </createIndex>
 
-        <addIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status">
+        <createIndex tableName="sync_fhir_profile" indexName="idx_last_execution_status" unique="false">
             <column name="last_execution_status"/>
-        </addIndex>
+        </createIndex>
 
         <rollback>
             <!-- Drop indexes -->
@@ -215,21 +217,21 @@
                 onDelete="CASCADE"/>
 
         <!-- Add indexes for performance -->
-        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_profile">
+        <createIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_profile" unique="false">
             <column name="sync_fhir_profile_id"/>
-        </addIndex>
+        </createIndex>
 
-        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_status">
+        <createIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_status" unique="false">
             <column name="execution_status"/>
-        </addIndex>
+        </createIndex>
 
-        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_start_time">
+        <createIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_start_time" unique="false">
             <column name="execution_start_time"/>
-        </addIndex>
+        </createIndex>
 
-        <addIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_date_created">
+        <createIndex tableName="sync_fhir_profile_execution_history" indexName="idx_execution_history_date_created" unique="false">
             <column name="date_created"/>
-        </addIndex>
+        </createIndex>
 
         <rollback>
             <dropTable tableName="sync_fhir_profile_execution_history"/>
