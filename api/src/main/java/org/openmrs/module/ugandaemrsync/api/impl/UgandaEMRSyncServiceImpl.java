@@ -310,7 +310,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
     /**
-     * @see UgandaEMRSyncService#processViralLoadCSV(InputStream)
+     * @see UgandaEMRSyncService#processViralLoadCSV(java.io.InputStream)
      */
     @Override
     public ViralLoadUploadResult processViralLoadCSV(java.io.InputStream csvInputStream) throws Exception {
