@@ -23,6 +23,7 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirProfileLog;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.model.ViralLoadUploadResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
@@ -155,6 +156,30 @@ public interface UgandaEMRSyncService extends OpenmrsService {
     public Encounter addVLToEncounter(String vlQualitative, String vlQuantitative, String vlDate, Encounter encounter,
                                       Order order);
 
+
+    /**
+     * Process viral load CSV file and add results to patient encounters
+     *
+     * This method processes a CSV file containing viral load results from external labs (e.g., CPHL).
+     * It validates the file format, extracts patient and result data, and updates corresponding encounters.
+     *
+     * @param csvInputStream the input stream containing the CSV file data
+     * @return ViralLoadUploadResult containing processing results including success/failure counts and error details
+     * @throws Exception if file processing fails
+     */
+    ViralLoadUploadResult processViralLoadCSV(java.io.InputStream csvInputStream) throws Exception;
+
+    /**
+     * Validate CSV file format for viral load results
+     *
+     * This method performs basic validation of the CSV file structure to ensure it meets
+     * the minimum requirements for processing viral load results.
+     *
+     * @param csvInputStream the input stream containing the CSV file data
+     * @return List of validation error messages (empty if validation passes)
+     * @throws Exception if file reading fails
+     */
+    List<String> validateCSVFormat(java.io.InputStream csvInputStream) throws Exception;
 
     /**
      * Saves an EID qualitative test result and return date to an encounter.
