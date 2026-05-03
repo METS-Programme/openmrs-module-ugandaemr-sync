@@ -9,7 +9,7 @@
     "dataType": "org.openmrs.DrugOrder",
     "dataTypeId": "",
     "endpoint": {
-      "url": "192.168.1.2",
+      "url": "http://164.90.209.79",
       "username": null,
       "password": null,
       "token": null

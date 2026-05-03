@@ -300,6 +300,12 @@
     "searchable": true,
     "searchURL": "https://hapi.devearea.com/hapi-fhir-jpaserver/fhir/Patient",
     "patientIdentifierType": "3",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://hapi.devearea.com/hapi-fhir-jpaserver/fhir",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

@@ -251,6 +251,12 @@
     "searchable": false,
     "searchURL": "",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "http://192.168.43.53:8080/api/alisdata",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

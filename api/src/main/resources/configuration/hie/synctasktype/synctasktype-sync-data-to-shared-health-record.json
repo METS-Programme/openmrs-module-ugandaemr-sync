@@ -10,8 +10,8 @@
     "dataTypeId": "315124004",
     "endpoint": {
       "url": "http://localhost:8085/hapi-fhir-jpaserver/fhir/Bundle",
-      "username": "ugandaemr001",
-      "password": "{{CONFIGURE_PASSWORD}}",
+      "username": null,
+      "password": null,
       "token": null
     }
   }

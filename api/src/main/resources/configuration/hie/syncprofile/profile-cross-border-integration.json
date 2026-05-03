@@ -247,6 +247,12 @@
     "searchable": true,
     "searchURL": "https://hie.eac.int/Patient",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://hie.eac.int/fhir",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

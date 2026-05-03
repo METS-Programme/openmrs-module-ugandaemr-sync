@@ -247,6 +247,12 @@
     "searchable": false,
     "searchURL": "",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://services.fhir.hispuganda.org/fhir",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

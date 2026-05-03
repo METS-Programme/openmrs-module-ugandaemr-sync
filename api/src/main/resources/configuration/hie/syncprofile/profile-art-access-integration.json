@@ -256,6 +256,12 @@
     "searchable": false,
     "searchURL": "",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/crpddp/send-test",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

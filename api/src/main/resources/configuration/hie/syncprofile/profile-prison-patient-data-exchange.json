@@ -129,9 +129,15 @@
     "keepProfileIdentifierOnly": false,
     "durationToKeepSyncedResources": 5,
     "syncLimit": null,
-    "searchable": false,
-    "searchURL": "",
+    "searchable": true,
+    "searchURL": "http://196.0.5.114:10000/searchpatient",
     "patientIdentifierType": "24",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "http://196.0.5.114:10000/hapi-fhir-jpaserver/fhir",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }
