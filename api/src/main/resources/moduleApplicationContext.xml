@@ -66,4 +66,19 @@
             <ref bean="dbSessionFactory"/>
         </property>
     </bean>
+
+    <!-- FHIR Profile Export Service -->
+    <bean id="ugandaemrsync.FhirProfileExportService"
+          class="org.openmrs.module.ugandaemrsync.api.impl.FhirProfileExportServiceImpl">
+    </bean>
+
+    <!-- Adds FhirProfileExportService to OpenMRS context -->
+    <bean parent="serviceContext">
+        <property name="moduleService">
+            <list>
+                <value>org.openmrs.module.ugandaemrsync.api.FhirProfileExportService</value>
+                <ref bean="ugandaemrsync.FhirProfileExportService" />
+            </list>
+        </property>
+    </bean>
 </beans>

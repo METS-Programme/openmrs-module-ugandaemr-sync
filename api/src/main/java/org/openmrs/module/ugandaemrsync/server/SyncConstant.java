@@ -89,6 +89,8 @@ public class SyncConstant {
 
     public static final String HIV_ENCOUNTER_PAGE_UUID = "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f";
 
+    public static final String LAB_REQUEST_ENCOUNTER_TYPE_UUID = "cbf01392-ca29-11e9-a32f-2a2ae2dbcce4";
+
     public static final String VIRAL_LOAD_LAB_REQUEST_ENCOUNTER_TYPE_UUID = "077c43ee-9745-11e9-bc42-526af7764f64";
 
     public static final String VIRAL_LOAD_SYNC_TASK_TYPE_UUID = "3551ca84-06c0-432b-9064-fcfeefd6f4ec";

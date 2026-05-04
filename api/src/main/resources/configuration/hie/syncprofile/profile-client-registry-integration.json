@@ -246,6 +246,12 @@
     "searchable": true,
     "searchURL": "https://mediator-api-staging.health.go.ug/fhir/Patient",
     "patientIdentifierType": "3",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://mediator-api-staging.health.go.ug/fhir/Patient",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

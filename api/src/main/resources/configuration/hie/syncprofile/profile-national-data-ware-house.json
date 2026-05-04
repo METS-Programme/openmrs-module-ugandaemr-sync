@@ -1,13 +1,13 @@
 {
   "metadata": {
     "id": "6511be5a-72f2-4638-a60b-78e31c3e2b28",
-    "name": "HIV CASE BASED SURVEILLANCE",
+    "name": "National Data Ware House",
     "category": "DEFAULT",
-    "description": "FHIR sync profile for HIV CASE BASED SURVEILLANCE",
-    "version": "1.0"
+    "description": "National Data Ware House profile",
+    "version": "2.0"
   },
   "configuration": {
-    "name": "HIV CASE BASED SURVEILLANCE",
+    "name": "National Data Ware House",
     "resourceTypes": "Patient,Person,EpisodeOfCare,Encounter,Immunization,MedicationRequest,Observation,ServiceRequest,Practitioner,Condition,AllergyIntolerance,DiagnosticReport",
     "isCaseBasedProfile": true,
     "caseBasedPrimaryResourceType": "Encounter",
@@ -302,6 +302,12 @@
     "searchable": false,
     "searchURL": "",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/central-server",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }

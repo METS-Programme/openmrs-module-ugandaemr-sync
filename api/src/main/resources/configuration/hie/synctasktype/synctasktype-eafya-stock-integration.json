@@ -9,9 +9,9 @@
     "dataType": "org.openmrs.Drug",
     "dataTypeId": "N/A",
     "endpoint": {
-      "url": "192.168.1.2",
-      "username": "theusername",
-      "password": "{{CONFIGURE_PASSWORD}}",
+      "url": "http://164.90.209.79",
+      "username": null,
+      "password": null,
       "token": null
     }
   }

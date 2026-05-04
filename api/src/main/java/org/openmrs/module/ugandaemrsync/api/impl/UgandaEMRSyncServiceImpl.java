@@ -74,20 +74,24 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirProfileLog;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
+import org.openmrs.module.ugandaemrsync.model.ViralLoadUploadResult;
 import org.openmrs.module.ugandaemrsync.server.SyncFHIRRecord;
 import org.openmrs.module.ugandaemrsync.server.SyncGlobalProperties;
 import org.openmrs.module.ugandaemrsync.util.UgandaEMRSyncUtil;
 import org.openmrs.parameter.OrderSearchCriteria;
+import org.openmrs.parameter.EncounterSearchCriteria;
 import org.openmrs.scheduler.TaskDefinition;
 import org.openmrs.util.OpenmrsUtil;
 import org.springframework.context.ApplicationContext;
 
+import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -303,6 +307,198 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
             }
             return encounter;
         }
+    }
+
+    /**
+     * @see UgandaEMRSyncService#processViralLoadCSV(java.io.InputStream)
+     */
+    @Override
+    public ViralLoadUploadResult processViralLoadCSV(java.io.InputStream csvInputStream) throws Exception {
+        ViralLoadUploadResult result = new ViralLoadUploadResult();
+        List<String> noEncounterFound = new ArrayList<>();
+        List<String> noPatientFound = new ArrayList<>();
+        List<String> patientResultNotReleased = new ArrayList<>();
+        int processedCount = 0;
+        int successCount = 0;
+
+        String cvsSplitBy = ",";
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(csvInputStream))) {
+            String line;
+            List<String> lines = new ArrayList<>();
+
+            while ((line = br.readLine()) != null) {
+                lines.add(line);
+            }
+
+            if (lines.isEmpty()) {
+                result.setSuccess(false);
+                result.setErrorMessage("No data found in the CSV file");
+                return result;
+            }
+
+            // Get encounter types for Lab Request encounters
+            Collection<EncounterType> encounterTypes = getEcounterTypes(org.openmrs.module.ugandaemrsync.server.SyncConstant.LAB_REQUEST_ENCOUNTER_TYPE_UUID);
+
+            // Validate facility from second row (first data row)
+            if (lines.size() > 1) {
+                String[] firstDataRow = lines.get(1).split(",");
+                if (firstDataRow.length > org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_FACILITY_DHIS2_ID_CELL_NO) {
+                    String facilityDhis2Id = firstDataRow[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_FACILITY_DHIS2_ID_CELL_NO].replaceAll("\"", "");
+
+                    if (!validateFacility(facilityDhis2Id)) {
+                        result.setSuccess(false);
+                        result.setHealthCenterNameValidator("Invalid Health Center DHIS2 UUID");
+                        result.setErrorMessage("Health Center DHIS2 ID does not match the facility configured in EMR");
+                        return result;
+                    }
+
+                    if (firstDataRow.length > org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_FACILITY_NAME_CELL_NO) {
+                        String facilityName = firstDataRow[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_FACILITY_NAME_CELL_NO].replaceAll("\"", "");
+                        result.setHealthCenterNameValidator(facilityName);
+                    }
+                }
+            }
+
+            // Process each row
+            for (int i = 0; i < lines.size(); i++) {
+                String[] vlResult = lines.get(i).split(",");
+
+                // Skip header row or malformed rows
+                if (vlResult.length <= org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_DATE_COLLECTION_CELL_NO) {
+                    continue;
+                }
+
+                // Skip header row by date column value
+                if (vlResult[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_DATE_COLLECTION_CELL_NO].replaceAll("\"", "").equals("date_collected")) {
+                    continue;
+                }
+
+                try {
+                    processedCount++;
+
+                    // Extract data from CSV
+                    String vlDate = vlResult[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_DATE_COLLECTION_CELL_NO].replaceAll("\"", "");
+                    String patientARTNo = vlResult[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_PATIENT_ART_ID_CELL_NO].replaceAll("\"", "");
+                    String vlQuantitative = vlResult[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_RESULTS_NUMERIC_CELL_NO].replaceAll("\"", "");
+                    String vlQualitative = vlResult[org.openmrs.module.ugandaemrsync.server.SyncConstant.VL_RESULTS_ALHPA_NUMERIC_CELL_NO].replaceAll("\"", "");
+
+                    // Parse date and create search range
+                    String dateFormat = "yyyy-MM-dd HH:mm:ss";
+                    SimpleDateFormat formatter = new SimpleDateFormat(getDateFormat(vlDate));
+                    SimpleDateFormat format = new SimpleDateFormat(dateFormat);
+
+                    Date collectionDate = formatter.parse(vlDate);
+                    Date endDate = format.parse(new SimpleDateFormat("yyyy-MM-dd").format(collectionDate) + " 23:59:59");
+                    Date startDate = format.parse(new SimpleDateFormat("yyyy-MM-dd").format(collectionDate) + " 00:00:00");
+
+                    // Find patient
+                    Patient patient = getPatientByPatientIdentifier(patientARTNo);
+
+                    if (patient == null) {
+                        noPatientFound.add(patientARTNo);
+                        continue;
+                    }
+
+                    // Find encounters
+                    EncounterSearchCriteria criteria = new EncounterSearchCriteria(
+                        patient, null, startDate, endDate, null, null,
+                        encounterTypes, null, null, null, false
+                    );
+
+                    List<Encounter> encounters = Context.getEncounterService().getEncounters(criteria);
+
+                    if (encounters.isEmpty()) {
+                        noEncounterFound.add(patientARTNo);
+                        continue;
+                    }
+
+                    // Find viral load order
+                    Encounter encounter = encounters.get(0);
+                    Order viralLoadOrder = null;
+
+                    try {
+                        for (Order order : encounter.getOrders()) {
+                            if (order.getConcept().getConceptId() == 165412 &&
+                                order.isActive() &&
+                                order.getInstructions() != null &&
+                                order.getInstructions().equals("REFER TO CPHL")) {
+                                viralLoadOrder = order;
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Error while searching for viral load order", e);
+                    }
+
+                    // Add viral load result to encounter
+                    addVLToEncounter(vlQualitative, vlQuantitative, vlDate, encounter, viralLoadOrder);
+                    successCount++;
+
+                } catch (Exception e) {
+                    log.error("Failed to process viral load result at row " + (i + 1), e);
+                    // Continue processing other rows
+                }
+            }
+
+            // Set result
+            result.setSuccess(true);
+            result.setProcessedCount(processedCount);
+            result.setSuccessCount(successCount);
+            result.setNoEncounterFound(noEncounterFound);
+            result.setNoPatientFound(noPatientFound);
+            result.setPatientResultNotReleased(patientResultNotReleased);
+            result.setErrorMessage("Successfully processed viral load results");
+
+        } catch (Exception e) {
+            log.error("Failed to read CSV file", e);
+            result.setSuccess(false);
+            result.setErrorMessage("Failed to process CSV file: " + e.getMessage());
+            throw e;
+        }
+
+        return result;
+    }
+
+    /**
+     * @see UgandaEMRSyncService#validateCSVFormat(InputStream)
+     */
+    @Override
+    public List<String> validateCSVFormat(java.io.InputStream csvInputStream) throws Exception {
+        List<String> errors = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(csvInputStream))) {
+            String line;
+            int lineNumber = 0;
+            int minColumns = 6;
+
+            while ((line = br.readLine()) != null) {
+                lineNumber++;
+                String[] columns = line.split(",");
+
+                if (lineNumber == 1) {
+                    // Validate header row
+                    if (columns.length < minColumns) {
+                        errors.add("CSV file must have at least " + minColumns + " columns");
+                    }
+                } else if (lineNumber == 2 && columns.length < minColumns) {
+                    // Validate first data row
+                    errors.add("Data rows must have at least " + minColumns + " columns");
+                }
+
+                // Check first few rows only
+                if (lineNumber > 5) break;
+            }
+
+            if (lineNumber == 0) {
+                errors.add("CSV file is empty");
+            }
+
+        } catch (Exception e) {
+            errors.add("Failed to parse CSV file: " + e.getMessage());
+        }
+
+        return errors;
     }
 
     /**

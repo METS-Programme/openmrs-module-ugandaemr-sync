@@ -247,6 +247,12 @@
     "searchable": false,
     "searchURL": "",
     "patientIdentifierType": "4",
-    "patientIdentifierTypeName": ""
+    "patientIdentifierTypeName": "",
+    "endpoint": {
+      "url": "https://ugisl.mets.or.ug/central-server",
+      "username": null,
+      "password": null,
+      "token": null
+    }
   }
 }
