@@ -252,6 +252,7 @@
     "searchURL": "",
     "patientIdentifierType": "4",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.SendLabRequestToALISTask",
     "endpoint": {
       "url": "http://192.168.43.53:8080/api/alisdata",
       "username": null,

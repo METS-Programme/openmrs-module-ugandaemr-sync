@@ -248,6 +248,7 @@
     "searchURL": "https://hie.eac.int/Patient",
     "patientIdentifierType": "4",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.CrossBorderIntegrationSyncTask",
     "endpoint": {
       "url": "https://hie.eac.int/fhir",
       "username": null,

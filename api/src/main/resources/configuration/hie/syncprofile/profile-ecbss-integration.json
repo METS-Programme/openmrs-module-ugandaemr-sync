@@ -248,6 +248,7 @@
     "searchURL": "",
     "patientIdentifierType": "4",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.ECBSSIntegrationTask",
     "endpoint": {
       "url": "https://services.fhir.hispuganda.org/fhir",
       "username": null,
