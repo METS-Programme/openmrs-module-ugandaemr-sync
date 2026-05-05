@@ -133,6 +133,7 @@
     "searchURL": "http://196.0.5.114:10000/searchpatient",
     "patientIdentifierType": "24",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.GenericFhirProfileSchedulerTask",
     "endpoint": {
       "url": "http://196.0.5.114:10000/hapi-fhir-jpaserver/fhir",
       "username": null,

@@ -301,6 +301,7 @@
     "searchURL": "http://165.227.170.84:9091/fhir/Patient",
     "patientIdentifierType": "3",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.GenericFhirProfileSchedulerTask",
     "endpoint": {
       "url": "http://165.227.170.84:9091/fhir",
       "username": null,

@@ -247,6 +247,7 @@
     "searchURL": "",
     "patientIdentifierType": "3",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.MPOXScreeningTask",
     "endpoint": {
       "url": "https://ugisl.mets.or.ug/central-server",
       "username": null,

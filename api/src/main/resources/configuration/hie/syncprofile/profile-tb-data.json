@@ -248,6 +248,7 @@
     "searchURL": "",
     "patientIdentifierType": "4",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.TBDataTask",
     "endpoint": {
       "url": "https://ugisl.mets.or.ug/central-server",
       "username": null,

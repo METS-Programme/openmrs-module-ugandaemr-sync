@@ -247,6 +247,7 @@
     "searchURL": "https://mediator-api-staging.health.go.ug/fhir/Patient",
     "patientIdentifierType": "3",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.ClientRegistryIntegrationTask",
     "endpoint": {
       "url": "https://mediator-api-staging.health.go.ug/fhir/Patient",
       "username": null,

@@ -45,7 +45,16 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             SyncFhirProfile profile = convertJsonToProfile(profileNode);
 
             UgandaEMRSyncService service = Context.getService(UgandaEMRSyncService.class);
-            return service.saveSyncFhirProfile(profile);
+            SyncFhirProfile savedProfile = service.saveSyncFhirProfile(profile);
+
+            // Log successful import with task class information
+            if (savedProfile.getCustomTaskClass() != null && !savedProfile.getCustomTaskClass().isEmpty()) {
+                log.info("Successfully imported profile '" + savedProfile.getName() + "' with custom task class: " + savedProfile.getCustomTaskClass());
+            } else {
+                log.info("Successfully imported profile '" + savedProfile.getName() + "' (will use generic scheduler)");
+            }
+
+            return savedProfile;
 
         } catch (Exception e) {
             log.error("Error importing profile from JSON", e);
@@ -63,6 +72,7 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
     public SyncFhirProfile importProfileFromFile(File file) {
         try {
             String content = new String(Files.readAllBytes(file.toPath()));
+            log.debug("Importing profile from file: " + file.getName());
             return importProfileFromJson(content);
         } catch (IOException e) {
             log.error("Error reading file: " + file.getAbsolutePath(), e);
@@ -85,6 +95,10 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
                     profiles.add(service.saveSyncFhirProfile(profile));
                 }
             }
+
+            // Log import summary
+            log.info(generateImportSummary(profiles));
+
         } catch (Exception e) {
             log.error("Error importing profiles from JSON", e);
             throw new RuntimeException("Failed to import profiles: " + e.getMessage(), e);
@@ -208,6 +222,11 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             result.setWarnings(warnings);
             result.setSuccess(true);
 
+            // Log import summary
+            if (!importedProfiles.isEmpty()) {
+                log.info(generateImportSummary(importedProfiles));
+            }
+
         } catch (Exception e) {
             log.error("Error importing all configuration", e);
             result.setSuccess(false);
@@ -230,6 +249,9 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             JsonNode metadata = root.has("export") ?
                     root.path("export").path("profiles").get(0).path("metadata") :
                     root.path("metadata");
+            JsonNode config = root.has("export") ?
+                    root.path("export").path("profiles").get(0).path("configuration") :
+                    root.path("configuration");
 
             // Validate required fields
             if (!metadata.has("name") || metadata.path("name").asText().isEmpty()) {
@@ -237,6 +259,20 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             }
             if (!root.has("configuration")) {
                 errors.add("Configuration section is required");
+            }
+
+            // Validate custom task class if specified
+            if (config.has("customTaskClass")) {
+                String customTaskClass = config.path("customTaskClass").asText();
+                if (customTaskClass != null && !customTaskClass.isEmpty()) {
+                    // Check if it's a valid Java class name format
+                    if (!customTaskClass.matches("^[a-zA-Z_$][a-zA-Z\\d_$]*(\\.[a-zA-Z_$][a-zA-Z\\d_$]*)*$")) {
+                        errors.add("Invalid custom task class format: " + customTaskClass);
+                    } else {
+                        // Log the custom task class assignment
+                        log.debug("Profile '" + metadata.path("name").asText() + "' will use custom task class: " + customTaskClass);
+                    }
+                }
             }
 
             result.setValid(errors.isEmpty());
@@ -269,16 +305,24 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
 
         // Import profiles
         Path profileDir = configDir.resolve("syncprofile");
+        List<SyncFhirProfile> importedProfiles = new ArrayList<>();
         if (Files.exists(profileDir)) {
             try {
                 Files.list(profileDir).filter(p -> p.toString().endsWith(".json")).forEach(p -> {
                     try {
                         SyncFhirProfile profile = importProfileFromFile(p.toFile());
+                        importedProfiles.add(profile);
                         log.info("Imported profile: " + profile.getName());
                     } catch (Exception e) {
                         log.warn("Failed to import profile from " + p.getFileName(), e);
                     }
                 });
+
+                // Log import summary
+                if (!importedProfiles.isEmpty()) {
+                    log.info(generateImportSummary(importedProfiles));
+                }
+
             } catch (IOException e) {
                 log.error("Error listing profile files", e);
             }
@@ -311,6 +355,7 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
         try {
             ClassLoader classLoader = getClass().getClassLoader();
             int importCount = 0;
+            List<SyncFhirProfile> importedProfiles = new ArrayList<>();
 
             // Import profiles from classpath
             String profilePath = "configuration/hie/syncprofile/";
@@ -327,6 +372,7 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
                             for (File file : profileFiles) {
                                 try {
                                     SyncFhirProfile profile = importProfileFromFile(file);
+                                    importedProfiles.add(profile);
                                     log.info("Imported profile from classpath: " + profile.getName());
                                     importCount++;
                                 } catch (Exception e) {
@@ -336,6 +382,11 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
                         }
                     }
                 }
+            }
+
+            // Log import summary
+            if (!importedProfiles.isEmpty()) {
+                log.info(generateImportSummary(importedProfiles));
             }
 
             // Import task types from classpath
@@ -387,68 +438,316 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
     }
 
     private SyncFhirProfile convertJsonToProfile(JsonNode profileNode) {
-        JsonNode metadata = profileNode.path("metadata");
-        JsonNode config = profileNode.path("configuration");
+        try {
+            JsonNode metadata = profileNode.path("metadata");
+            JsonNode config = profileNode.path("configuration");
 
-        String uuid = metadata.path("id").asText(null);
-        SyncFhirProfile profile;
+            String uuid = metadata.path("id").asText(null);
+            SyncFhirProfile profile;
 
-        // Assume profile is new until proven otherwise
-        profile = new SyncFhirProfile();
-        boolean isNewProfile = true;
+            // Assume profile is new until proven otherwise
+            profile = new SyncFhirProfile();
+            boolean isNewProfile = true;
 
-        // Try to find existing profile by UUID
-        if (uuid != null && !uuid.isEmpty()) {
-            SyncFhirProfile existingProfile = Context.getService(UgandaEMRSyncService.class)
-                    .getSyncFhirProfileByUUID(uuid);
-            if (existingProfile != null) {
-                // Found existing profile, use it instead of creating new
-                profile = existingProfile;
-                isNewProfile = false;
+            // Try to find existing profile by UUID
+            if (uuid != null && !uuid.isEmpty()) {
+                try {
+                    SyncFhirProfile existingProfile = Context.getService(UgandaEMRSyncService.class)
+                            .getSyncFhirProfileByUUID(uuid);
+                    if (existingProfile != null) {
+                        // Found existing profile, use it instead of creating new
+                        profile = existingProfile;
+                        isNewProfile = false;
+                        log.debug("Updating existing profile: " + profile.getName() + " (UUID: " + uuid + ")");
+                    } else {
+                        // No existing profile found, set UUID on new profile
+                        profile.setUuid(uuid);
+                        log.debug("Creating new profile with UUID: " + uuid);
+                    }
+                } catch (Exception e) {
+                    log.warn("Error checking for existing profile by UUID: " + uuid + ", creating new profile", e);
+                    profile.setUuid(uuid);
+                }
             } else {
-                // No existing profile found, set UUID on new profile
-                profile.setUuid(uuid);
+                log.debug("Creating new profile without UUID");
             }
-        }
 
-        // Set endpoint fields
+        // Set endpoint fields with safe handling
         // For new profiles: set all fields from JSON
         // For existing profiles: only update if JSON value is not null/empty
         if (config.has("endpoint")) {
             JsonNode endpoint = config.path("endpoint");
-            String url = endpoint.has("url") ? endpoint.path("url").asText(null) : null;
 
-            // Only set URL if it's not null and not empty, or if this is a new profile
-            if (isNewProfile || (url != null && !url.isEmpty())) {
-                profile.setUrl(url);
+            // Handle URL safely
+            if (endpoint.has("url")) {
+                String url = endpoint.path("url").asText(null);
+                // Only set URL if it's not null and not empty, or if this is a new profile
+                if (isNewProfile || (url != null && !url.isEmpty())) {
+                    profile.setUrl(url);
+                }
             }
 
             // Only set credentials for new profiles, never overwrite existing credentials
             if (isNewProfile) {
                 if (endpoint.has("username")) {
-                    profile.setUrlUserName(endpoint.path("username").asText(null));
+                    String username = endpoint.path("username").asText(null);
+                    if (username != null && !username.isEmpty()) {
+                        profile.setUrlUserName(username);
+                    }
                 }
                 if (endpoint.has("password")) {
-                    profile.setUrlPassword(endpoint.path("password").asText(null));
+                    String password = endpoint.path("password").asText(null);
+                    if (password != null && !password.isEmpty()) {
+                        profile.setUrlPassword(password);
+                    }
                 }
                 if (endpoint.has("token")) {
-                    profile.setUrlToken(endpoint.path("token").asText(null));
+                    String token = endpoint.path("token").asText(null);
+                    if (token != null && !token.isEmpty()) {
+                        profile.setUrlToken(token);
+                    }
                 }
-                profile.setProfileEnabled(config.path("profileEnabled").asBoolean(true));
             }
         }
 
-        // Set profile metadata and configuration
-        profile.setName(metadata.path("name").asText());
-        profile.setResourceTypes(config.path("resourceTypes").asText(null));
-        profile.setIsCaseBasedProfile(config.path("isCaseBasedProfile").asBoolean(false));
-        profile.setCaseBasedPrimaryResourceType(config.path("caseBasedPrimaryResourceType").asText(null));
-        profile.setResourceSearchParameter(config.path("resourceSearchParameter").asText(null));
-        profile.setGenerateBundle(config.path("generateBundle").asBoolean(true));
-        profile.setNumberOfResourcesInBundle(config.path("numberOfResourcesInBundle").asInt(50));
-        profile.setKeepProfileIdentifierOnly(config.path("keepProfileIdentifierOnly").asBoolean(false));
-        profile.setDurationToKeepSyncedResources(config.path("durationToKeepSyncedResources").asInt(30));
+        // Handle profile enabled status
+        if (config.has("profileEnabled")) {
+            profile.setProfileEnabled(config.path("profileEnabled").asBoolean(true));
+        }
+
+        // Handle patient identifier type safely
+        if (config.has("patientIdentifierType")) {
+            String patientIdentifierTypeStr = config.path("patientIdentifierType").asText(null);
+            if (patientIdentifierTypeStr != null && !patientIdentifierTypeStr.isEmpty()) {
+                try {
+                    Integer patientIdentifierTypeId = Integer.parseInt(patientIdentifierTypeStr);
+                    // Only try to set if it's a valid ID
+                    if (patientIdentifierTypeId > 0) {
+                        // Note: Setting the actual PatientIdentifierType object would require service lookup
+                        // For now, we'll just log this and let the service layer handle it
+                        log.debug("Profile '" + profile.getName() + "' configured with patient identifier type ID: " + patientIdentifierTypeId);
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid patient identifier type format for profile '" + profile.getName() + "': " + patientIdentifierTypeStr);
+                }
+            }
+        }
+
+        // Set profile metadata and configuration with safe handling
+
+        // Profile name (always set from metadata)
+        String name = metadata.path("name").asText();
+        if (name != null && !name.isEmpty()) {
+            profile.setName(name);
+        }
+
+        // Resource types (update if provided)
+        if (config.has("resourceTypes")) {
+            String resourceTypes = config.path("resourceTypes").asText(null);
+            if (resourceTypes != null && !resourceTypes.isEmpty()) {
+                profile.setResourceTypes(resourceTypes);
+            }
+        }
+
+        // Case-based profile configuration (update if provided)
+        if (config.has("isCaseBasedProfile")) {
+            profile.setIsCaseBasedProfile(config.path("isCaseBasedProfile").asBoolean(false));
+        }
+
+        if (config.has("caseBasedPrimaryResourceType")) {
+            String caseBasedPrimaryResourceType = config.path("caseBasedPrimaryResourceType").asText(null);
+            if (caseBasedPrimaryResourceType != null && !caseBasedPrimaryResourceType.isEmpty()) {
+                profile.setCaseBasedPrimaryResourceType(caseBasedPrimaryResourceType);
+            }
+        }
+
+        if (config.has("caseBasedPrimaryResourceTypeId")) {
+            String caseBasedPrimaryResourceTypeId = config.path("caseBasedPrimaryResourceTypeId").asText(null);
+            if (caseBasedPrimaryResourceTypeId != null && !caseBasedPrimaryResourceTypeId.isEmpty()) {
+                profile.setCaseBasedPrimaryResourceTypeId(caseBasedPrimaryResourceTypeId);
+            }
+        }
+
+        // Resource search parameter (update if provided)
+        if (config.has("resourceSearchParameter")) {
+            String resourceSearchParameter = config.path("resourceSearchParameter").asText(null);
+            if (resourceSearchParameter != null && !resourceSearchParameter.isEmpty()) {
+                profile.setResourceSearchParameter(resourceSearchParameter);
+            }
+        }
+
+        // Bundle generation configuration (update if provided)
+        if (config.has("generateBundle")) {
+            profile.setGenerateBundle(config.path("generateBundle").asBoolean(true));
+        }
+
+        if (config.has("numberOfResourcesInBundle")) {
+            int numberOfResourcesInBundle = config.path("numberOfResourcesInBundle").asInt(50);
+            if (numberOfResourcesInBundle > 0) {
+                profile.setNumberOfResourcesInBundle(numberOfResourcesInBundle);
+            }
+        }
+
+        if (config.has("keepProfileIdentifierOnly")) {
+            profile.setKeepProfileIdentifierOnly(config.path("keepProfileIdentifierOnly").asBoolean(false));
+        }
+
+        if (config.has("durationToKeepSyncedResources")) {
+            int durationToKeepSyncedResources = config.path("durationToKeepSyncedResources").asInt(30);
+            if (durationToKeepSyncedResources >= 0) {
+                profile.setDurationToKeepSyncedResources(durationToKeepSyncedResources);
+            }
+        }
+
+        // Set custom task class if specified
+        String customTaskClass = config.path("customTaskClass").asText(null);
+        if (customTaskClass != null && !customTaskClass.isEmpty()) {
+            profile.setCustomTaskClass(customTaskClass);
+            log.debug("Set custom task class for profile '" + profile.getName() + "': " + customTaskClass);
+        }
+
+        // Set additional configuration fields with safe handling
+        if (config.has("syncLimit")) {
+            int syncLimit = config.path("syncLimit").asInt(50);
+            if (syncLimit >= 0) {
+                profile.setSyncLimit(syncLimit);
+            }
+        }
+
+        if (config.has("searchable")) {
+            profile.setSearchable(config.path("searchable").asBoolean(false));
+        }
+
+        if (config.has("searchURL")) {
+            String searchURL = config.path("searchURL").asText(null);
+            if (searchURL != null && !searchURL.isEmpty()) {
+                profile.setSearchURL(searchURL);
+            }
+        }
+
+        // Set scheduling configuration if present
+        if (config.has("scheduleEnabled")) {
+            profile.setScheduleEnabled(config.path("scheduleEnabled").asBoolean(false));
+        }
+
+        if (config.has("scheduleType")) {
+            String scheduleType = config.path("scheduleType").asText(null);
+            if (scheduleType != null && !scheduleType.isEmpty()) {
+                profile.setScheduleType(scheduleType);
+            }
+        }
+
+        if (config.has("cronExpression")) {
+            String cronExpression = config.path("cronExpression").asText(null);
+            if (cronExpression != null && !cronExpression.isEmpty()) {
+                profile.setCronExpression(cronExpression);
+            }
+        }
+
+        if (config.has("fixedRateInterval")) {
+            JsonNode fixedRateNode = config.path("fixedRateInterval");
+            if (!fixedRateNode.isMissingNode() && !fixedRateNode.isNull()) {
+                try {
+                    Long fixedRateInterval = fixedRateNode.asLong();
+                    if (fixedRateInterval > 0) {
+                        profile.setFixedRateInterval(fixedRateInterval);
+                    }
+                } catch (Exception e) {
+                    log.warn("Invalid fixedRateInterval value for profile '" + profile.getName() + "'");
+                }
+            }
+        }
+
+        if (config.has("fixedDelayInterval")) {
+            JsonNode fixedDelayNode = config.path("fixedDelayInterval");
+            if (!fixedDelayNode.isMissingNode() && !fixedDelayNode.isNull()) {
+                try {
+                    Long fixedDelayInterval = fixedDelayNode.asLong();
+                    if (fixedDelayInterval > 0) {
+                        profile.setFixedDelayInterval(fixedDelayInterval);
+                    }
+                } catch (Exception e) {
+                    log.warn("Invalid fixedDelayInterval value for profile '" + profile.getName() + "'");
+                }
+            }
+        }
+
+        if (config.has("taskName")) {
+            String taskName = config.path("taskName").asText(null);
+            if (taskName != null && !taskName.isEmpty()) {
+                profile.setTaskName(taskName);
+            }
+        }
+
+        if (config.has("taskDescription")) {
+            String taskDescription = config.path("taskDescription").asText(null);
+            if (taskDescription != null && !taskDescription.isEmpty()) {
+                profile.setTaskDescription(taskDescription);
+            }
+        }
+
+        if (config.has("taskGroup")) {
+            String taskGroup = config.path("taskGroup").asText(null);
+            if (taskGroup != null && !taskGroup.isEmpty()) {
+                profile.setTaskGroup(taskGroup);
+            }
+        }
+
+        if (config.has("executionPriority")) {
+            Integer executionPriority = config.path("executionPriority").asInt(5);
+            if (executionPriority >= 1 && executionPriority <= 10) {
+                profile.setExecutionPriority(executionPriority);
+            }
+        }
+
+        if (config.has("parallelExecution")) {
+            profile.setParallelExecution(config.path("parallelExecution").asBoolean(false));
+        }
+
+        if (config.has("timeoutDuration")) {
+            JsonNode timeoutNode = config.path("timeoutDuration");
+            if (!timeoutNode.isMissingNode() && !timeoutNode.isNull()) {
+                try {
+                    Long timeoutDuration = timeoutNode.asLong();
+                    if (timeoutDuration > 0) {
+                        profile.setTimeoutDuration(timeoutDuration);
+                    }
+                } catch (Exception e) {
+                    log.warn("Invalid timeoutDuration value for profile '" + profile.getName() + "'");
+                }
+            }
+        }
+
+        if (config.has("maxRetryAttempts")) {
+            Integer maxRetryAttempts = config.path("maxRetryAttempts").asInt(3);
+            if (maxRetryAttempts >= 0) {
+                profile.setMaxRetryAttempts(maxRetryAttempts);
+            }
+        }
+
+        if (config.has("retryInterval")) {
+            JsonNode retryIntervalNode = config.path("retryInterval");
+            if (!retryIntervalNode.isMissingNode() && !retryIntervalNode.isNull()) {
+                try {
+                    Long retryInterval = retryIntervalNode.asLong();
+                    if (retryInterval > 0) {
+                        profile.setRetryInterval(retryInterval);
+                    }
+                } catch (Exception e) {
+                    log.warn("Invalid retryInterval value for profile '" + profile.getName() + "'");
+                }
+            }
+        }
+
+        // Log successful conversion
+        log.debug("Successfully converted profile configuration: " + profile.getName());
+
         return profile;
+
+        } catch (Exception e) {
+            log.error("Error converting JSON to profile object", e);
+            throw new RuntimeException("Failed to convert profile configuration: " + e.getMessage(), e);
+        }
     }
 
     private SyncTaskType convertJsonToTaskType(JsonNode taskTypeNode) {
@@ -508,5 +807,44 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
         taskType.setDataTypeId(config.path("dataTypeId").asText(null));
 
         return taskType;
+    }
+
+    /**
+     * Generate a summary report of imported profiles and their task class assignments
+     *
+     * @param profiles List of profiles to summarize
+     * @return Summary string describing the task class distribution
+     */
+    public String generateImportSummary(List<SyncFhirProfile> profiles) {
+        if (profiles == null || profiles.isEmpty()) {
+            return "No profiles to summarize";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("FHIR Profile Import Summary:\n");
+        summary.append("=========================\n");
+
+        int customTaskCount = 0;
+        int genericTaskCount = 0;
+
+        for (SyncFhirProfile profile : profiles) {
+            String taskClassInfo;
+            if (profile.getCustomTaskClass() != null && !profile.getCustomTaskClass().isEmpty()) {
+                taskClassInfo = "Custom: " + profile.getCustomTaskClass();
+                customTaskCount++;
+            } else {
+                taskClassInfo = "Generic Scheduler";
+                genericTaskCount++;
+            }
+
+            summary.append(String.format("- %s: %s\n", profile.getName(), taskClassInfo));
+        }
+
+        summary.append("\n");
+        summary.append(String.format("Total Profiles: %d\n", profiles.size()));
+        summary.append(String.format("Custom Task Classes: %d\n", customTaskCount));
+        summary.append(String.format("Generic Scheduler: %d\n", genericTaskCount));
+
+        return summary.toString();
     }
 }

@@ -257,6 +257,7 @@
     "searchURL": "",
     "patientIdentifierType": "4",
     "patientIdentifierTypeName": "",
+    "customTaskClass": "org.openmrs.module.ugandaemrsync.tasks.ARTAccessIntegrationTask",
     "endpoint": {
       "url": "https://ugisl.mets.or.ug/crpddp/send-test",
       "username": null,
