@@ -70,7 +70,7 @@
         "participant": [],
         "subject": [],
         "type": [
-          "264daIZd-f80e-48fe-nba9-P37f2W1905Pv"
+          { "uuid": "264daIZd-f80e-48fe-nba9-P37f2W1905Pv", "display": "HTC - Encounter", "description": "An encounter when a patient gets HCT services" }
         ],
         "id": [],
         "lastUpdated": {

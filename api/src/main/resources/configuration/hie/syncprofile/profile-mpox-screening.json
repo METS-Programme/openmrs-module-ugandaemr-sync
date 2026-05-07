@@ -70,7 +70,7 @@
         "participant": [],
         "subject": [],
         "type": [
-          "09478ad9-ccc1-4cbe-9e55-473447984158"
+          { "uuid": "09478ad9-ccc1-4cbe-9e55-473447984158", "display": "Monkey Pox Screening", "description": "Encounter type for screening MPOX patient" }
         ],
         "id": [],
         "lastUpdated": {

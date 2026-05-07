@@ -36,6 +36,7 @@ import org.openmrs.module.fhir2.api.FhirServiceRequestService;
 import org.openmrs.module.fhir2.api.search.param.ConditionSearchParams;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
 import org.openmrs.module.ugandaemrsync.model.SyncFhirProfile;
+import org.openmrs.module.ugandaemrsync.util.ConceptFilterUtils;
 import org.springframework.context.ApplicationContext;
 
 import java.lang.reflect.Field;
@@ -230,18 +231,13 @@ public class FhirResourceGenerator {
         try {
             if (syncFhirProfile != null) {
                 JSONObject searchParams = getSearchParametersInJsonObject("Observation", syncFhirProfile.getResourceSearchParameter());
-                JSONArray codes = searchParams.getJSONArray("code");
+                List<String> conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
 
                 lastSyncDate = getLastSyncDate(syncFhirProfile, "Observation");
-                for (Object conceptUID : codes) {
-                    try {
-                        Concept concept = Context.getConceptService().getConcept(conceptUID.toString());
-                        if (concept != null) {
-                            conceptQuestionList.add(concept);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error while adding concept with uuid " + conceptUID, e);
-                    }
+                conceptQuestionList = ConceptFilterUtils.loadConceptsFromUuids(conceptUuids);
+
+                if (conceptQuestionList.size() < conceptUuids.size()) {
+                    log.warn("Some concepts could not be loaded. Requested: " + conceptUuids.size() + ", Loaded: " + conceptQuestionList.size());
                 }
 
                 if (syncFhirProfile.getIsCaseBasedProfile()) {
@@ -406,14 +402,14 @@ public class FhirResourceGenerator {
      */
     public Collection<IBaseResource> getConditionResourceBundle(SyncFhirCase syncFhirCase, SyncFhirProfile syncFhirProfile) {
         try {
-            JSONArray codes = new JSONArray();
+            List<String> conceptUuids = new ArrayList<>();
             Collection<IBaseResource> iBaseResources = new ArrayList<>();
             ConditionSearchParams conditionSearchParams = new ConditionSearchParams();
             DateRangeParam lastUpdated = null;
 
             if (syncFhirProfile != null) {
                 JSONObject searchParams = getSearchParametersInJsonObject("Condition", syncFhirProfile.getResourceSearchParameter());
-                codes = searchParams.getJSONArray("code");
+                conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
 
                 if (syncFhirProfile.getIsCaseBasedProfile()) {
                     Date caseDate = (syncFhirCase != null && syncFhirCase.getLastUpdateDate() != null)

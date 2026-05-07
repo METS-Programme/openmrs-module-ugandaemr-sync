@@ -584,6 +584,13 @@ public class UgandaEMRHttpURLConnection {
         return pooledHttpClient;
     }
 
+    /**
+     * Get an HTTP client that trusts self-signed certificates from destination servers.
+     * Returns the shared pooled client with lenient SSL configuration.
+     *
+     * Note: This method name is legacy. The client does NOT present its own certificate.
+     * It simply trusts self-signed certificates presented by remote servers.
+     */
     public static CloseableHttpClient createAcceptSelfSignedCertificateClient()
             throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
         // Use the pooled client instead of creating new clients
@@ -739,6 +746,18 @@ public class UgandaEMRHttpURLConnection {
         } else if (e instanceof java.net.SocketTimeoutException) {
             errorCode = UgandaEMRSyncException.ErrorCode.READ_TIMEOUT;
         } else if (e instanceof java.net.UnknownHostException) {
+            errorCode = UgandaEMRSyncException.ErrorCode.CONNECTION_FAILED;
+        } else if (e instanceof javax.net.ssl.SSLHandshakeException ||
+                   e instanceof javax.net.ssl.SSLKeyException ||
+                   e instanceof javax.net.ssl.SSLPeerUnverifiedException) {
+            // SSL errors should not prevent retry - may be due to self-signed certs or temporary network issues
+            // The lenient SSL configuration should handle most self-signed cert scenarios
+            errorCode = UgandaEMRSyncException.ErrorCode.CONNECTION_FAILED;
+        } else if (e instanceof java.security.cert.CertificateException ||
+                   e instanceof java.security.KeyManagementException ||
+                   e instanceof java.security.KeyStoreException ||
+                   e instanceof java.security.NoSuchAlgorithmException) {
+            // Certificate and crypto errors - these are typically configuration issues
             errorCode = UgandaEMRSyncException.ErrorCode.CONNECTION_FAILED;
         } else if (e instanceof org.apache.http.client.HttpResponseException) {
             int statusCode = ((org.apache.http.client.HttpResponseException) e).getStatusCode();
@@ -920,16 +939,22 @@ public class UgandaEMRHttpURLConnection {
 
     /**
      * Create SSL context based on environment configuration.
-     * For development/test environments, creates a more lenient SSL context that accepts self-signed certificates.
-     * For production environments, uses strict certificate validation.
+     *
+     * DEPLOYMENT SCENARIO:
+     * - UgandaEMR instances (this module) act as HTTP clients with NO certificates
+     * - Destination servers (CPHL, Central Server, DHIS2) use SELF-SIGNED certificates
+     *
+     * This configuration allows the client to trust self-signed certificates from destination servers.
+     * The client does NOT present its own certificate (no mutual TLS).
      */
     private static SSLContext createSSLContextForEnvironment() throws UgandaEMRSyncException {
         try {
-            // Check if we should use lenient SSL validation (for development/test environments)
+            // Check if we should use lenient SSL validation
             if (shouldUseLenientSSL()) {
-                logger.warn("Using lenient SSL validation - Self-signed certificates will be accepted. DO NOT USE IN PRODUCTION!");
+                logger.info("Using lenient SSL validation - Will trust self-signed certificates from destination servers");
 
-                // Create SSL context that trusts all certificates (for development only)
+                // Create SSL context that trusts all server certificates (including self-signed)
+                // This is necessary because destination servers (CPHL, Central Server) use self-signed certificates
                 SSLContext sslContext = SSLContext.getInstance("TLS");
                 javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[]{
                     new javax.net.ssl.X509TrustManager() {
@@ -941,6 +966,7 @@ public class UgandaEMRHttpURLConnection {
                         }
                         public void checkServerTrusted(
                             java.security.cert.X509Certificate[] certs, String authType) {
+                            // Trust all server certificates, including self-signed
                         }
                     }
                 };
@@ -949,7 +975,7 @@ public class UgandaEMRHttpURLConnection {
                 return sslContext;
             }
 
-            // Use proper SSL configuration for production
+            // Use strict SSL configuration (only if explicitly configured)
             return SSLConfiguration.createSSLContext();
 
         } catch (Exception e) {
@@ -959,10 +985,13 @@ public class UgandaEMRHttpURLConnection {
 
     /**
      * Check if we should use lenient SSL validation.
-     * This can be enabled via global property or system property for development/test environments.
      *
-     * DEFAULT: Returns TRUE for deployments without proper SSL infrastructure
-     * This module is designed for local environments where self-signed certificates are standard.
+     * CONTEXT: UgandaEMR instances connect to external servers (CPHL, Central Server, DHIS2)
+     * that typically use self-signed certificates. This module acts as an HTTP client that
+     * needs to trust those self-signed certificates.
+     *
+     * DEFAULT: Returns TRUE to trust self-signed certificates from destination servers.
+     * Set to FALSE only if all destination servers have valid CA-signed certificates.
      */
     private static boolean shouldUseLenientSSL() {
         // Check system property first (highest priority)
@@ -979,14 +1008,13 @@ public class UgandaEMRHttpURLConnection {
                 return Boolean.parseBoolean(globalProperty);
             }
         } catch (Exception e) {
-            // If we can't access the service, use lenient mode (appropriate for local deployments)
-            logger.warn("Error checking SSL lenient property, using lenient mode for local deployment: " + e.getMessage());
+            // If we can't access the service, use lenient mode (allows self-signed certs)
+            logger.warn("Error checking SSL lenient property, using lenient mode: " + e.getMessage());
         }
 
-        // DEFAULT TO LENIENT SSL FOR LOCAL DEPLOYMENTS WITHOUT SSL INFRASTRUCTURE
-        // This module is typically deployed in local environments without proper SSL certificates
-        // If you need strict SSL validation, explicitly set ugandaemrsync.ssl.lenient=false
-        logger.warn("Using lenient SSL validation (default) - Module is configured for local deployment without SSL infrastructure");
+        // DEFAULT: Trust self-signed certificates from destination servers
+        // This is the standard deployment scenario for UgandaEMR installations
+        logger.info("Using lenient SSL validation (default) - Will trust self-signed certificates from destination servers");
         return true;
     }
 }

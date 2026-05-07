@@ -8,9 +8,9 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirProfile;
 import org.openmrs.module.ugandaemrsync.server.SyncFHIRRecord;
 import org.openmrs.scheduler.tasks.AbstractTask;
 
-public class HIVCaseBasedSurveillanceTask extends AbstractTask {
+public class NationalDataWareHouseTask extends AbstractTask {
 
-    Log log = LogFactory.getLog(HIVCaseBasedSurveillanceTask.class);
+    Log log = LogFactory.getLog(NationalDataWareHouseTask.class);
     @Override
     public void execute() {
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);

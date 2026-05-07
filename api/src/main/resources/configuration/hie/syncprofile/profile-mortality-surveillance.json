@@ -70,7 +70,7 @@
         "participant": [],
         "subject": [],
         "type": [
-          "e75c856a-9e91-4ffb-bf43-1b0450b4ff8c"
+          { "uuid": "e75c856a-9e91-4ffb-bf43-1b0450b4ff8c", "display": "DEATH AND CERTIFICATION", "description": "Notification of Death and Certification of Cause of Death" }
         ],
         "id": [],
         "lastUpdated": {

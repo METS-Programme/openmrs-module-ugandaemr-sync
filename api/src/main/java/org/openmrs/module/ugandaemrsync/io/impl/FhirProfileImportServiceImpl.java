@@ -570,9 +570,11 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
 
         // Resource search parameter (update if provided)
         if (config.has("resourceSearchParameter")) {
-            String resourceSearchParameter = config.path("resourceSearchParameter").asText(null);
-            if (resourceSearchParameter != null && !resourceSearchParameter.isEmpty()) {
-                profile.setResourceSearchParameter(resourceSearchParameter);
+            JsonNode searchParamNode = config.path("resourceSearchParameter");
+            if (!searchParamNode.isMissingNode() && !searchParamNode.isNull()) {
+                // Use toString() to handle both String and Object/Array nodes
+                // asText() returns empty string for Object/Array nodes, losing the data
+                profile.setResourceSearchParameter(searchParamNode.toString());
             }
         }
 

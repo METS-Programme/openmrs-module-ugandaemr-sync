@@ -3517,13 +3517,15 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         Map<String, Object> syncResponse = new HashMap<>();
 
         try {
-            syncResponse = ugandaEMRHttpURLConnection.sendPostBy(
+            // Use sendPostWithRetry for better error handling and automatic retry on transient failures
+            // The lenient SSL configuration handles self-signed certificates automatically
+            syncResponse = ugandaEMRHttpURLConnection.sendPostWithRetry(
                     syncTaskType.getUrl(),
+                    payload,
                     syncTaskType.getUrlUserName(),
                     syncTaskType.getUrlPassword(),
-                    "",
-                    payload,
-                    false
+                    JSON_CONTENT_TYPE,
+                    "ViralLoadToCPHL"
             );
 
             if (syncResponse != null) {

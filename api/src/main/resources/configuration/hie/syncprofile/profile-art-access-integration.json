@@ -29,14 +29,14 @@
           "myUpperBound": ""
         },
         "code": [
-          99161,
-          90315,
-          5096,
-          90221,
-          163023,
-          856,
-          1305,
-          166500
+          { "uuid": "ab505422-26d9-41f1-a079-c3d222000440", "display": "BASELINE REGIMEN START DATE", "id": 99161 },
+          { "uuid": "dd2b0b4d-30ab-102d-86b0-7a5022ba4115", "display": "CURRENT ARV REGIMEN", "id": 90315 },
+          { "uuid": "dcac04cf-30ab-102d-86b0-7a5022ba4115", "display": "RETURN VISIT DATE", "id": 5096 },
+          { "uuid": "dce03b2f-30ab-102d-86b0-7a5022ba4115", "display": "ANTI-RETROVIRAL DRUG ADHERENCE ASSESSMENT CODE", "id": 90221 },
+          { "uuid": "0b434cfa-b11c-4d14-aaa2-9aed6ca2da88", "display": "HIV VIRAL LOAD DATE", "id": 163023 },
+          { "uuid": "dc8d83e3-30ab-102d-86b0-7a5022ba4115", "display": "HIV VIRAL LOAD", "id": 856 },
+          { "uuid": "dca12261-30ab-102d-86b0-7a5022ba4115", "display": "VIRAL LOAD QUALITATIVE", "id": 1305 },
+          { "uuid": "7a22cfcb-a272-4eff-968c-5e9467125a7b", "display": "Refill Point Code", "id": 166500 }
         ],
         "category": [],
         "id": [],
@@ -79,8 +79,8 @@
         "participant": [],
         "subject": [],
         "type": [
-          "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f",
-          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+          { "uuid": "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f", "display": "ART Card - Summary", "description": "Outpatient Adult Initial Visit" },
+          { "uuid": "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f", "display": "ART Card - Encounter", "description": "Outpatient Adult & Child Return Visit" }
         ],
         "id": [],
         "lastUpdated": {

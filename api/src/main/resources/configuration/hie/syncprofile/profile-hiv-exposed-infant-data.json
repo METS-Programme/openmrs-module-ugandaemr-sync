@@ -70,8 +70,8 @@
         "participant": [],
         "subject": [],
         "type": [
-          "4345dacb-909d-429c-99aa-045f2db77e2b",
-          "9fcfcc91-ad60-4d84-9710-11cc25258719"
+          { "uuid": "4345dacb-909d-429c-99aa-045f2db77e2b", "display": "EID Card - Encounter", "description": "Outpatient Child Return Visit" },
+          { "uuid": "9fcfcc91-ad60-4d84-9710-11cc25258719", "display": "EID Card - Summary", "description": "Outpatient Children Initial Visit" }
         ],
         "id": [],
         "lastUpdated": {

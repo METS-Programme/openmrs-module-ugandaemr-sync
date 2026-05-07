@@ -102,6 +102,91 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
     @Column(name = "search_url", length = 255)
     private String searchURL;
 
+
+    // ===========================
+    // SCHEDULING CONFIGURATION
+    // ===========================
+
+    @Column(name = "schedule_enabled")
+    private Boolean scheduleEnabled = false;
+
+    @Column(name = "schedule_type", length = 50)
+    private String scheduleType; // CRON, FIXED_RATE, FIXED_DELAY, MANUAL
+
+    @Column(name = "cron_expression", length = 100)
+    private String cronExpression;
+
+    @Column(name = "fixed_rate_interval")
+    private Long fixedRateInterval; // milliseconds
+
+    @Column(name = "fixed_delay_interval")
+    private Long fixedDelayInterval; // milliseconds
+
+    @Column(name = "start_date_time")
+    private Date startDateTime;
+
+    @Column(name = "end_date_time")
+    private Date endDateTime;
+
+    @Column(name = "max_retry_attempts")
+    private Integer maxRetryAttempts = 3;
+
+    @Column(name = "custom_task_class", length = 255)
+    private String customTaskClass; // Fully qualified class name of custom task to run this profile
+
+    @Column(name = "retry_interval")
+    private Long retryInterval = 60000L; // 1 minute default
+
+    @Column(name = "timeout_duration")
+    private Long timeoutDuration = 300000L; // 5 minutes default
+
+    @Column(name = "parallel_execution")
+    private Boolean parallelExecution = false;
+
+    @Column(name = "execution_priority")
+    private Integer executionPriority = 5; // 1-10, 1 highest
+
+    // ===========================
+    // TASK CONFIGURATION
+    // ===========================
+
+    @Column(name = "task_name", length = 255)
+    private String taskName; // Unique task name
+
+    @Column(name = "task_description", length = 1000)
+    private String taskDescription;
+
+    @Column(name = "task_group", length = 100)
+    private String taskGroup; // For grouping related tasks
+
+    // ===========================
+    // EXECUTION TRACKING
+    // ===========================
+
+    @Column(name = "last_execution_date")
+    private Date lastExecutionDate;
+
+    @Column(name = "next_execution_date")
+    private Date nextExecutionDate;
+
+    @Column(name = "last_execution_status", length = 50)
+    private String lastExecutionStatus; // SUCCESS, FAILED, RUNNING
+
+    @Column(name = "total_executions")
+    private Long totalExecutions = 0L;
+
+    @Column(name = "successful_executions")
+    private Long successfulExecutions = 0L;
+
+    @Column(name = "failed_executions")
+    private Long failedExecutions = 0L;
+
+    @Column(name = "average_execution_time")
+    private Long averageExecutionTime = 0L;
+
+    @Column(name = "last_execution_error", length = 2000)
+    private String lastExecutionError;
+
     public int getSyncFhirProfileId() {
         return syncFhirProfileId;
     }
@@ -319,89 +404,7 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
         this.searchURL = searchURL;
     }
 
-    // ===========================
-    // SCHEDULING CONFIGURATION
-    // ===========================
 
-    @Column(name = "schedule_enabled")
-    private Boolean scheduleEnabled = false;
-
-    @Column(name = "schedule_type", length = 50)
-    private String scheduleType; // CRON, FIXED_RATE, FIXED_DELAY, MANUAL
-
-    @Column(name = "cron_expression", length = 100)
-    private String cronExpression;
-
-    @Column(name = "fixed_rate_interval")
-    private Long fixedRateInterval; // milliseconds
-
-    @Column(name = "fixed_delay_interval")
-    private Long fixedDelayInterval; // milliseconds
-
-    @Column(name = "start_date_time")
-    private Date startDateTime;
-
-    @Column(name = "end_date_time")
-    private Date endDateTime;
-
-    @Column(name = "max_retry_attempts")
-    private Integer maxRetryAttempts = 3;
-
-    @Column(name = "custom_task_class", length = 255)
-    private String customTaskClass; // Fully qualified class name of custom task to run this profile
-
-    @Column(name = "retry_interval")
-    private Long retryInterval = 60000L; // 1 minute default
-
-    @Column(name = "timeout_duration")
-    private Long timeoutDuration = 300000L; // 5 minutes default
-
-    @Column(name = "parallel_execution")
-    private Boolean parallelExecution = false;
-
-    @Column(name = "execution_priority")
-    private Integer executionPriority = 5; // 1-10, 1 highest
-
-    // ===========================
-    // TASK CONFIGURATION
-    // ===========================
-
-    @Column(name = "task_name", length = 255)
-    private String taskName; // Unique task name
-
-    @Column(name = "task_description", length = 1000)
-    private String taskDescription;
-
-    @Column(name = "task_group", length = 100)
-    private String taskGroup; // For grouping related tasks
-
-    // ===========================
-    // EXECUTION TRACKING
-    // ===========================
-
-    @Column(name = "last_execution_date")
-    private Date lastExecutionDate;
-
-    @Column(name = "next_execution_date")
-    private Date nextExecutionDate;
-
-    @Column(name = "last_execution_status", length = 50)
-    private String lastExecutionStatus; // SUCCESS, FAILED, RUNNING
-
-    @Column(name = "total_executions")
-    private Long totalExecutions = 0L;
-
-    @Column(name = "successful_executions")
-    private Long successfulExecutions = 0L;
-
-    @Column(name = "failed_executions")
-    private Long failedExecutions = 0L;
-
-    @Column(name = "average_execution_time")
-    private Long averageExecutionTime = 0L;
-
-    @Column(name = "last_execution_error", length = 2000)
-    private String lastExecutionError;
 
     // ===========================
     // GETTERS AND SETTERS - SCHEDULING

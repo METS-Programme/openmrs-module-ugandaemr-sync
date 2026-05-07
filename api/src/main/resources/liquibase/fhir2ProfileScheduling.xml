@@ -292,4 +292,32 @@
         </insert>
     </changeSet>
 
+    <changeSet id="ugandaemrsync-20260507-rename-hiv-surveillance" author="slubwama1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM scheduler_task_config WHERE uuid = '56db6ac0-0e60-4ddc-8dfd-0035a4e64489'
+            </sqlCheck>
+        </preConditions>
+        <comment>Renaming HIV CASE BASED SURVEILLANCE task to National Data Ware House</comment>
+        <update tableName="scheduler_task_config">
+            <column name="name" value="National Data Ware House"/>
+            <column name="description" value="The National Data Ware House task"/>
+            <column name="schedulable_class" value="org.openmrs.module.ugandaemrsync.tasks.NationalDataWareHouseTask"/>
+            <where>uuid = '56db6ac0-0e60-4ddc-8dfd-0035a4e64489'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="ugandaemrsync-20260507-rename-hiv-surveillance-profile" author="slubwama1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM sync_fhir_profile WHERE uuid = '6511be5a-72f2-4638-a60b-78e31c3e2b28'
+            </sqlCheck>
+        </preConditions>
+        <comment>Renaming HIV CASE BASED SURVEILLANCE FHIR profile to National Data Ware House</comment>
+        <update tableName="sync_fhir_profile">
+            <column name="name" value="National Data Ware House"/>
+            <where>uuid = '6511be5a-72f2-4638-a60b-78e31c3e2b28'</where>
+        </update>
+    </changeSet>
+
 </databaseChangeLog>
