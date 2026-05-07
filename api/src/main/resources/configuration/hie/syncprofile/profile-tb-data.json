@@ -70,8 +70,8 @@
         "participant": [],
         "subject": [],
         "type": [
-          "334bf97e-28e2-4a27-8727-a5ce31c7cd66",
-          "455bad1f-5e97-4ee9-9558-ff1df8808732"
+          { "uuid": "334bf97e-28e2-4a27-8727-a5ce31c7cd66", "display": "TB Summary (Enrollment)", "description": "An encounter for the initial visit to the TB clinic" },
+          { "uuid": "455bad1f-5e97-4ee9-9558-ff1df8808732", "display": "TB Encounter (Followup)", "description": "An encounter for a return visit to the TB clinic" }
         ],
         "id": [],
         "lastUpdated": {
@@ -115,7 +115,7 @@
       },
       "episodeofcareFilter": {
         "type": [
-          ""
+          { "uuid": "9dc21a72-0971-11e7-8037-507b9dc4c741", "display": "TB Program", "description": "Program where TB patients are treated and monitored" }
         ],
         "lastUpdated": {
           "lowerBound": "",

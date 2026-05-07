@@ -70,8 +70,8 @@
         "participant": [],
         "subject": [],
         "type": [
-          "b57e1835-4ee2-47fa-9569-c700c39c169a",
-          "786c576b-b70f-4235-93ea-fbce1a3f38c4"
+          { "uuid": "b57e1835-4ee2-47fa-9569-c700c39c169a", "display": "Mobility Screening  Encounter", "description": "Mobility Screening Encounter" },
+          { "uuid": "786c576b-b70f-4235-93ea-fbce1a3f38c4", "display": "Facility Linkage Encounter", "description": "Facility Linkage Encounter" }
         ],
         "id": [],
         "lastUpdated": {

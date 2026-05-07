@@ -29,10 +29,10 @@
           "myUpperBound": ""
         },
         "code": [
-          160741,
-          166421,
-          159367,
-          165043
+          { "uuid": "160741AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "display": "Medication history", "id": 160741 },
+          { "uuid": "79e5d7e4-00e7-4733-80d3-c2d913237457", "display": "Antibiotics Given", "id": 166421 },
+          { "uuid": "159367AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "display": "Currently taking medication", "id": 159367 },
+          { "uuid": "165043AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "display": "Lab test ordered", "id": 165043 }
         ],
         "category": [],
         "id": [],
@@ -75,7 +75,7 @@
         "participant": [],
         "subject": [],
         "type": [
-          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+          { "uuid": "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f", "display": "ART Card - Encounter", "description": "Outpatient Adult & Child Return Visit" }
         ],
         "id": [],
         "lastUpdated": {

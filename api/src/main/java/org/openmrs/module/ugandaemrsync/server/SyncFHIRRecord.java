@@ -31,6 +31,7 @@ import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncErrorType;
 import org.openmrs.module.ugandaemrsync.service.SyncCaseGenerationTrackingService;
 import org.openmrs.module.ugandaemrsync.service.SyncErrorTrackingService;
+import org.openmrs.module.ugandaemrsync.util.ConceptFilterUtils;
 import org.openmrs.module.ugandaemrsync.util.UgandaEMRSyncUtil;
 import org.openmrs.parameter.EncounterSearchCriteria;
 import org.openmrs.util.OpenmrsUtil;
@@ -560,7 +561,8 @@ public class SyncFHIRRecord {
                     List<PatientProgram> patientProgramList = new ArrayList<>();
 
                     for (Object jsonObject : jsonArray) {
-                        patientProgramList = Context.getProgramWorkflowService().getPatientPrograms(syncFHIRCase.getPatient(), Context.getProgramWorkflowService().getProgramByUuid(jsonObject.toString()), lastUpdateDate, currentDate, null, null, false);
+                        String programUuid = extractUuidFromJsonElement(jsonObject);
+                        patientProgramList = Context.getProgramWorkflowService().getPatientPrograms(syncFHIRCase.getPatient(), Context.getProgramWorkflowService().getProgramByUuid(programUuid), lastUpdateDate, currentDate, null, null, false);
                     }
 
                     if (patientProgramList.size() > 0) {
@@ -574,7 +576,8 @@ public class SyncFHIRRecord {
                     JSONArray encounterUUIDS = getSearchParametersInJsonObject("Encounter", syncFhirProfile.getResourceSearchParameter()).getJSONArray("type");
 
                     for (Object jsonObject : encounterUUIDS) {
-                        encounterTypes.add(Context.getEncounterService().getEncounterTypeByUuid(jsonObject.toString()));
+                        String encounterUuid = extractUuidFromJsonElement(jsonObject);
+                        encounterTypes.add(Context.getEncounterService().getEncounterTypeByUuid(encounterUuid));
                     }
                     EncounterSearchCriteria encounterSearchCriteria = new EncounterSearchCriteria(syncFHIRCase.getPatient(), null, encounterLastUpdated.getLowerBoundAsInstant(), encounterLastUpdated.getUpperBoundAsInstant(), null, null, encounterTypes, null, null, null, false);
                     encounters = Context.getEncounterService().getEncounters(encounterSearchCriteria);
@@ -658,7 +661,8 @@ public class SyncFHIRRecord {
                     JSONArray jsonArray = getSearchParametersInJsonObject("Encounter", syncFhirProfile.getResourceSearchParameter()).getJSONArray("type");
 
                     for (Object jsonObject : jsonArray) {
-                        encounterTypes.add(Context.getEncounterService().getEncounterTypeByUuid(jsonObject.toString()));
+                        String encounterUuid = extractUuidFromJsonElement(jsonObject);
+                        encounterTypes.add(Context.getEncounterService().getEncounterTypeByUuid(encounterUuid));
                     }
 
                     EncounterSearchCriteria encounterSearchCriteria = new EncounterSearchCriteria(null, null, encounterLastUpdated.getLowerBoundAsInstant(), encounterLastUpdated.getUpperBoundAsInstant(), null, null, encounterTypes, null, null, null, false);
@@ -962,6 +966,30 @@ public class SyncFHIRRecord {
         return jsonObject;
     }
 
+    /**
+     * Extracts UUID from a JSON element that may be either a String or a JSONObject.
+     * Supports both legacy format (string UUID) and new format (object with uuid, display, description).
+     *
+     * @param jsonElement the JSON element (String or JSONObject)
+     * @return the UUID string
+     */
+    private String extractUuidFromJsonElement(Object jsonElement) {
+        if (jsonElement == null) {
+            return null;
+        }
+        if (jsonElement instanceof String) {
+            return (String) jsonElement;
+        }
+        if (jsonElement instanceof org.json.JSONObject) {
+            org.json.JSONObject jsonObject = (org.json.JSONObject) jsonElement;
+            if (jsonObject.has("uuid")) {
+                return jsonObject.getString("uuid");
+            }
+        }
+        // Fallback to toString for backward compatibility
+        return jsonElement.toString();
+    }
+
     public String addSearchParameter(String resourceType, String searchParam, String searchParamString) {
 
 
@@ -1076,7 +1104,7 @@ public class SyncFHIRRecord {
     }
 
     private Collection<IBaseResource> getConditionResourceBundle(SyncFhirCase syncFhirCase, SyncFhirProfile syncFhirProfile) {
-        JSONArray codes = new JSONArray();
+        List<String> conceptUuids = new ArrayList<>();
         Collection<IBaseResource> iBaseResources = new ArrayList<>();
 
         TokenAndListParam codeReference = new TokenAndListParam();
@@ -1085,7 +1113,7 @@ public class SyncFHIRRecord {
         DateRangeParam lastUpdated = null;
         if (syncFhirProfile != null) {
             JSONObject searchParams = getSearchParametersInJsonObject("Condition", syncFhirProfile.getResourceSearchParameter());
-            codes = searchParams.getJSONArray("code");
+            conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
 
             if (syncFhirProfile != null && syncFhirProfile.getIsCaseBasedProfile()) {
 
@@ -1102,12 +1130,12 @@ public class SyncFHIRRecord {
 
         }
 
-        for (Object conceptUID : codes) {
+        for (String conceptUuid : conceptUuids) {
             try {
-                TokenParam paramConcept = new TokenParam(conceptUID.toString());
+                TokenParam paramConcept = new TokenParam(conceptUuid);
                 codeReference.addAnd(paramConcept);
             } catch (Exception e) {
-                log.error("Error while adding concept with uuid " + conceptUID, e);
+                log.error("Error while adding concept with uuid " + conceptUuid, e);
             }
 
         }
@@ -1176,7 +1204,7 @@ public class SyncFHIRRecord {
 
         JSONObject searchParams = getSearchParametersInJsonObject("medicationDispense", syncFhirProfile.getResourceSearchParameter());
 
-        JSONArray codes = searchParams.getJSONArray("code");
+        List<String> conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
         Collection<IBaseResource> iBaseResources = new ArrayList<>();
 
         MedicationDispenseSearchParams medicationDispenseSearchParams = new MedicationDispenseSearchParams();
@@ -1220,7 +1248,7 @@ public class SyncFHIRRecord {
         DateRangeParam lastUpdated = null;
 
         if (syncFhirProfile != null) {
-            getSearchParametersInJsonObject("medicationRequest", syncFhirProfile.getResourceSearchParameter());
+            searchParams = getSearchParametersInJsonObject("medicationRequest", syncFhirProfile.getResourceSearchParameter());
             if (syncFhirProfile.getIsCaseBasedProfile()) {
                 if (syncFhirCase != null && syncFhirCase.getLastUpdateDate() != null) {
                     lastUpdated = new DateRangeParam().setUpperBoundInclusive(new Date()).setLowerBoundInclusive(syncFhirCase.getLastUpdateDate());
@@ -1234,13 +1262,13 @@ public class SyncFHIRRecord {
 
         }
         if (!searchParams.isEmpty() && searchParams.has("code")) {
-            JSONArray codes = searchParams.getJSONArray("code");
-            for (Object conceptUID : codes) {
+            List<String> conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
+            for (String conceptUuid : conceptUuids) {
                 try {
-                    TokenParam paramConcept = new TokenParam(conceptUID.toString());
+                    TokenParam paramConcept = new TokenParam(conceptUuid);
                     codeReference.addAnd(paramConcept);
                 } catch (Exception e) {
-                    log.error("Error while adding concept with uuid " + conceptUID, e);
+                    log.error("Error while adding concept with uuid " + conceptUuid, e);
                 }
 
             }
@@ -1274,7 +1302,7 @@ public class SyncFHIRRecord {
         DateRangeParam lastUpdated = null;
 
         if (syncFhirProfile != null) {
-            getSearchParametersInJsonObject("diagnosticReport", syncFhirProfile.getResourceSearchParameter());
+            searchParams = getSearchParametersInJsonObject("diagnosticReport", syncFhirProfile.getResourceSearchParameter());
             if (syncFhirProfile.getIsCaseBasedProfile()) {
                 if (syncFhirCase != null && syncFhirCase.getLastUpdateDate() != null) {
                     lastUpdated = new DateRangeParam().setUpperBoundInclusive(new Date()).setLowerBoundInclusive(syncFhirCase.getLastUpdateDate());
@@ -1282,19 +1310,19 @@ public class SyncFHIRRecord {
                     lastUpdated = new DateRangeParam().setUpperBoundInclusive(new Date()).setLowerBoundInclusive(getDefaultLastSyncDate());
                 }
             } else {
-                lastUpdated = new DateRangeParam().setUpperBoundInclusive(new Date()).setLowerBoundInclusive(getLastSyncDate(syncFhirProfile, "MedicationRequest"));
+                lastUpdated = new DateRangeParam().setUpperBoundInclusive(new Date()).setLowerBoundInclusive(getLastSyncDate(syncFhirProfile, "DiagnosticReport"));
 
             }
         }
 
         if (!searchParams.isEmpty() && searchParams.has("code")) {
-            JSONArray codes = searchParams.getJSONArray("code");
-            for (Object conceptUID : codes) {
+            List<String> conceptUuids = ConceptFilterUtils.extractConceptUuidsFromJson(searchParams, "code");
+            for (String conceptUuid : conceptUuids) {
                 try {
-                    TokenParam paramConcept = new TokenParam(conceptUID.toString());
+                    TokenParam paramConcept = new TokenParam(conceptUuid);
                     codeReference.addAnd(paramConcept);
                 } catch (Exception e) {
-                    log.error("Error while adding concept with uuid " + conceptUID, e);
+                    log.error("Error while adding concept with uuid " + conceptUuid, e);
                 }
 
             }

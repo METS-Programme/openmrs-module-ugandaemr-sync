@@ -70,7 +70,7 @@
         "participant": [],
         "subject": [],
         "type": [
-          "c11774c1-3b4a-4bdb-a847-6060895e006d"
+          { "uuid": "c11774c1-3b4a-4bdb-a847-6060895e006d", "display": "ART Regimen Change", "description": "ART Regimen Switch or Change Encounter" }
         ],
         "id": [],
         "lastUpdated": {

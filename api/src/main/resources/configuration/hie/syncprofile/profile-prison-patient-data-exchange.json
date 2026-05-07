@@ -70,8 +70,8 @@
         "participant": [],
         "subject": [],
         "type": [
-          "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f",
-          "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f"
+          { "uuid": "8d5b27bc-c2cc-11de-8d13-0010c6dffd0f", "display": "ART Card - Summary", "description": "Outpatient Adult Initial Visit" },
+          { "uuid": "8d5b2be0-c2cc-11de-8d13-0010c6dffd0f", "display": "ART Card - Encounter", "description": "Outpatient Adult & Child Return Visit" }
         ],
         "id": [],
         "lastUpdated": {
@@ -115,7 +115,7 @@
       },
       "episodeofcareFilter": {
         "type": [
-          ""
+          { "uuid": "a2b9ce3d-a5e8-4ad3-832c-b6994bd8b615", "display": "Prisoner Program", "description": "Program where  patients are prisoners" }
         ],
         "lastUpdated": {
           "lowerBound": "",
