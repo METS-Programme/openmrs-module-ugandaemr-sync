@@ -235,7 +235,7 @@ ALTER TABLE sync_fhir_profile ADD COLUMN fixed_rate_interval INT;
 **Code Changes**:
 ```java
 // Old approach (deprecated)
-HIVCaseBasedSurveillanceTask task = new HIVCaseBasedSurveillanceTask();
+NationalDataWareHouseTask task = new NationalDataWareHouseTask();
 
 // New approach (recommended)
 GenericFhirProfileSchedulerTask scheduler = new GenericFhirProfileSchedulerTask();

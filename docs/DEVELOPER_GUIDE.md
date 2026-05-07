@@ -113,7 +113,7 @@ openmrs-module-ugandaemr-sync/
 │   │       │   └── UgandaEMRSyncDao.java
 │   │       ├── tasks/           # Scheduled tasks
 │   │       │   ├── GenericFhirProfileSchedulerTask.java
-│   │       │   └── HIVCaseBasedSurveillanceTask.java
+│   │       │   └── NationalDataWareHouseTask.java
 │   │       ├── server/          # FHIR processing
 │   │       │   ├── SyncFHIRRecord.java
 │   │       │   ├── FhirQueryExecutor.java

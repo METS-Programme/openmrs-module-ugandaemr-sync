@@ -150,9 +150,9 @@ Description: Universal FHIR profile scheduler
 Create individual tasks for each profile:
 
 ```bash
-# HIV Surveillance Task
-Task Name: HIV Surveillance Task
-Task Class: org.openmrs.module.ugandaemrsync.tasks.HIVCaseBasedSurveillanceTask
+# National Data Ware House Task
+Task Name: National Data Ware House Task
+Task Class: org.openmrs.module.ugandaemrsync.tasks.NationalDataWareHouseTask
 Schedule: 0 0 * * * (hourly)
 Property: syncFhirProfileUUID = <your-profile-uuid>
 
