@@ -103,5 +103,8 @@ public class UgandaEMRSyncConfig {
 	public static final String PATIENT_ID_TYPE_CROSS_BORDER_NAME = "Patient Unique  ID Code (UIC)";
 	public static final String FSHR_SYNC_FHIR_PROFILE_UUID = "f2190cf4-2236-11ee-be56-0242ac120002";
 
+	public static final String GP_CONFIGURATION_DIRECTORY = "ugandaemrsync.configuration.directory";
+	public static final String GP_HIE_SETTINGS_IMPORT_DIRECTORY = "ugandaemrsync.hieSettingsImport.directory";
+
 
 }

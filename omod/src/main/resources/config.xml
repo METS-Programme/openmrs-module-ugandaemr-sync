@@ -567,7 +567,18 @@
             The allowable test order to be referred and their data requirements.
         </description>
     </globalProperty>
-    
+
+    <!-- FHIR Profile Configuration Import -->
+    <globalProperty>
+        <property>ugandaemrsync.configuration.directory</property>
+        <defaultValue>configuration/hie</defaultValue>
+        <description>
+            Directory path (relative to OpenMRS application data directory or module classpath) from which to import FHIR profile configurations.
+            This can be an absolute path, a path relative to the OpenMRS application data directory, or a classpath-relative path.
+            Default is 'configuration/hie' which looks for profiles in {OPENMRS_DATA_DIR}/configuration/hie/ and classpath:configuration/hie/
+        </description>
+    </globalProperty>
+
     <!-- Internationalization -->
     <!-- All message codes should start with ugandaemrsync.* -->
     <messages>

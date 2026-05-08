@@ -292,19 +292,27 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
      * Import profiles from configuration directory on startup
      *
      * @param configPath Base configuration directory path (e.g., /path/to/configuration)
-     *                   Expected subdirectories: hie/syncprofile/ and hie/synctasktype/
+     *                   Expected subdirectories: syncprofile/ and synctasktype/
+     *                   If null, reads from global property ugandaemrsync.configuration.directory
      */
     public void importConfigurationsFromDirectory(String configPath) {
-        Path configDir = Paths.get(configPath, "hie");
-        if (!Files.exists(configDir)) {
-            log.info("Configuration directory not found: " + configDir);
+        // If no path provided, use global property default
+        if (configPath == null) {
+            configPath = getConfigDirectoryPath();
+        }
+
+        // Import from syncprofile and synctasktype subdirectories directly
+        // (not under hie/ - the global property can point to the exact location)
+        Path baseConfigDir = Paths.get(configPath);
+        if (!Files.exists(baseConfigDir)) {
+            log.info("Configuration directory not found: " + baseConfigDir);
             return;
         }
 
-        log.info("Importing configurations from: " + configDir);
+        log.info("Importing configurations from: " + baseConfigDir);
 
         // Import profiles
-        Path profileDir = configDir.resolve("syncprofile");
+        Path profileDir = baseConfigDir.resolve("syncprofile");
         List<SyncFhirProfile> importedProfiles = new ArrayList<>();
         if (Files.exists(profileDir)) {
             try {
@@ -329,7 +337,7 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
         }
 
         // Import task types
-        Path taskTypeDir = configDir.resolve("synctasktype");
+        Path taskTypeDir = baseConfigDir.resolve("synctasktype");
         if (Files.exists(taskTypeDir)) {
             try {
                 Files.list(taskTypeDir).filter(p -> p.toString().endsWith(".json")).forEach(p -> {
@@ -344,6 +352,33 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
                 log.error("Error listing task type files", e);
             }
         }
+    }
+
+    /**
+     * Get the configuration directory path from global property.
+     * First checks if the global property is set to an absolute path.
+     * If not, resolves relative to OpenMRS application data directory.
+     * Falls back to default "configuration/hie" if property is not set.
+     *
+     * @return Resolved configuration directory path
+     */
+    private String getConfigDirectoryPath() {
+        org.openmrs.api.AdministrationService adminService = Context.getService(org.openmrs.api.AdministrationService.class);
+        String configDir = adminService.getGlobalProperty("ugandaemrsync.configuration.directory");
+
+        if (configDir == null || configDir.trim().isEmpty()) {
+            configDir = "configuration/hie"; // Default
+        }
+
+        // Check if it's an absolute path
+        Path path = Paths.get(configDir);
+        if (path.isAbsolute()) {
+            return configDir;
+        }
+
+        // Relative path - resolve against OpenMRS application data directory
+        String openmrsDataDir = org.openmrs.util.OpenmrsUtil.getApplicationDataDirectory();
+        return Paths.get(openmrsDataDir, configDir).toString();
     }
 
     /**

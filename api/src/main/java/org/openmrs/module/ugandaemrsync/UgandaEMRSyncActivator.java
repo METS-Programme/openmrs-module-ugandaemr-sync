@@ -11,6 +11,8 @@ package org.openmrs.module.ugandaemrsync;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openmrs.Concept;
+import org.openmrs.api.context.Context;
 import org.openmrs.module.BaseModuleActivator;
 import org.openmrs.module.ugandaemrsync.io.impl.FhirProfileImportServiceImpl;
 import org.openmrs.module.ugandaemrsync.server.SyncGlobalProperties;
@@ -56,6 +58,7 @@ public class UgandaEMRSyncActivator extends BaseModuleActivator {
 	 */
 	private void importConfigurationsOnStartup() {
 		try {
+			String path = Context.getAdministrationService().getGlobalProperty(UgandaEMRSyncConfig.GP_CONFIGURATION_DIRECTORY);
 			// Try to import from classpath resources first (bundled with module)
 			FhirProfileImportServiceImpl importService = new FhirProfileImportServiceImpl();
 			boolean importedFromClasspath = importService.importConfigurationsFromClasspath();
