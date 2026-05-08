@@ -109,14 +109,14 @@ public class SendRecencyDataToCentralServerTask extends AbstractTask {
 		}
 		log.info("Sending recency data to central server ");
 		String bodyText = getRecencyDataExport();
-		HttpResponse httpResponse = ugandaEMRHttpURLConnection.post(recencyServerUrlEndPoint, bodyText,syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID),syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_RECENCY_SERVER_PASSWORD));
-		if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+		UgandaEMRHttpURLConnection.SimpleHttpResponse httpResponse = ugandaEMRHttpURLConnection.post(recencyServerUrlEndPoint, bodyText,syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID),syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_RECENCY_SERVER_PASSWORD));
+		if (httpResponse.getStatusCode() == HttpStatus.SC_OK) {
 			ReportUtil.updateGlobalProperty(GP_RECENCY_TASK_LAST_SUCCESSFUL_SUBMISSION_DATE,
 			    dateTimeFormat.format(todayDate));
 			log.info("Recency data has been sent to central server");
 		} else {
-			log.info("Http response status code: " + httpResponse.getStatusLine().getStatusCode() + ". Reason: "
-			        + httpResponse.getStatusLine().getReasonPhrase());
+			log.info("Http response status code: " + httpResponse.getStatusCode() + ". Reason: "
+			        + httpResponse.getReasonPhrase());
 		}
 	}
 	

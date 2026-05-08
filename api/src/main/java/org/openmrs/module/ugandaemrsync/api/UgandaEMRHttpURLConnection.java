@@ -98,6 +98,43 @@ public class UgandaEMRHttpURLConnection {
     private static volatile CloseableHttpClient pooledHttpClient;
     private static final Object CLIENT_LOCK = new Object();
 
+    /**
+     * Simple HTTP response holder that ensures proper resource cleanup.
+     * This class replaces returning HttpResponse directly to prevent connection pool leaks.
+     */
+    public static class SimpleHttpResponse {
+        private final int statusCode;
+        private final String reasonPhrase;
+        private final String responseBody;
+
+        public SimpleHttpResponse(int statusCode, String reasonPhrase, String responseBody) {
+            this.statusCode = statusCode;
+            this.reasonPhrase = reasonPhrase;
+            this.responseBody = responseBody;
+        }
+
+        public SimpleHttpResponse(int statusCode, String reasonPhrase) {
+            this(statusCode, reasonPhrase, null);
+        }
+
+        public int getStatusCode() {
+            return statusCode;
+        }
+
+        public String getReasonPhrase() {
+            return reasonPhrase;
+        }
+
+        public String getResponseBody() {
+            return responseBody;
+        }
+
+        @Override
+        public String toString() {
+            return "SimpleHttpResponse{statusCode=" + statusCode + ", reasonPhrase='" + reasonPhrase + "'}";
+        }
+    }
+
     // Default retry policies for different operation types
     private static final RetryPolicy CRITICAL_RETRY_POLICY = RetryPolicy.getConservativeRetryPolicy();
     private static final RetryPolicy STANDARD_RETRY_POLICY = RetryPolicy.getDefaultHttpRetryPolicy();
@@ -225,6 +262,11 @@ public class UgandaEMRHttpURLConnection {
             map.put("responseMessage", responseMessage);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            // Ensure response entity is consumed to return connection to pool
+            if (response != null) {
+                EntityUtils.consumeQuietly(response.getEntity());
+            }
         }
         return map;
 
@@ -294,6 +336,11 @@ public class UgandaEMRHttpURLConnection {
             map.put("responseMessage", responseMessage);
         } catch (Exception e) {
             log.error(e.getMessage());
+        } finally {
+            // Ensure response entity is consumed to return connection to pool
+            if (response != null) {
+                EntityUtils.consumeQuietly(response.getEntity());
+            }
         }
         return map;
 
@@ -424,9 +471,9 @@ public class UgandaEMRHttpURLConnection {
         }
     }
 
-    public HttpResponse post(String url, String bodyText,String username,String password) {
+    public SimpleHttpResponse post(String url, String bodyText,String username,String password) {
         HttpResponse response = null;
-        CloseableHttpClient client = getPooledHttpClient(); // Use pooled client with timeout configuration
+        CloseableHttpClient client = getPooledHttpClient();
         HttpPost post = new HttpPost(url);
         SyncGlobalProperties syncGlobalProperties = new SyncGlobalProperties();
         try {
@@ -437,20 +484,27 @@ public class UgandaEMRHttpURLConnection {
                     = new UsernamePasswordCredentials(username,password);
             post.addHeader(new BasicScheme().authenticate(credentials, post, null));
 
-            HttpEntity multipart = MultipartEntityBuilder.create().setMode(HttpMultipartMode.BROWSER_COMPATIBLE).addTextBody(UgandaEMRSyncConfig.DHIS_ORGANIZATION_UUID, syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID)).addTextBody(UgandaEMRSyncConfig.HTTP_TEXT_BODY_DATA_TYPE_KEY, bodyText, ContentType.APPLICATION_JSON)// Current implementation uses plain text due to decoding challenges on the receiving server.
+            HttpEntity multipart = MultipartEntityBuilder.create().setMode(HttpMultipartMode.BROWSER_COMPATIBLE).addTextBody(UgandaEMRSyncConfig.DHIS_ORGANIZATION_UUID, syncGlobalProperties.getGlobalProperty(UgandaEMRSyncConfig.GP_DHIS2_ORGANIZATION_UUID)).addTextBody(UgandaEMRSyncConfig.HTTP_TEXT_BODY_DATA_TYPE_KEY, bodyText, ContentType.APPLICATION_JSON)
                     .build();
             post.setEntity(multipart);
 
             response = client.execute(post);
+
+            int statusCode = response.getStatusLine().getStatusCode();
+            String reasonPhrase = response.getStatusLine().getReasonPhrase();
+            String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            return new SimpleHttpResponse(statusCode, reasonPhrase, responseBody);
+
         } catch (IOException | AuthenticationException e) {
-            log.info("Exception sending Recency data " + e.getMessage());
+            log.info("Exception sending data " + e.getMessage());
+            return new SimpleHttpResponse(-1, e.getMessage());
+        } finally {
+            // Entity already consumed via EntityUtils.toString() above
         }
-        return response;
     }
 
-    public HttpResponse httpPost(String serverUrl, String bodyText, String username, String password) {
+    public SimpleHttpResponse httpPost(String serverUrl, String bodyText, String username, String password) {
         HttpResponse response = null;
-
         HttpPost post = new HttpPost(serverUrl);
         SyncGlobalProperties syncGlobalProperties = new SyncGlobalProperties();
         try {
@@ -461,7 +515,6 @@ public class UgandaEMRHttpURLConnection {
                     = new UsernamePasswordCredentials(username, password);
             post.addHeader(new BasicScheme().authenticate(credentials, post, null));
 
-
             post.addHeader("x-ugandaemr-facilityname", syncGlobalProperties.getGlobalProperty(GP_FACILITY_NAME));
 
             post.addHeader("x-ugandaemr-dhis2uuid", syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID));
@@ -471,10 +524,18 @@ public class UgandaEMRHttpURLConnection {
             post.setEntity(httpEntity);
 
             response = client.execute(post);
+
+            int statusCode = response.getStatusLine().getStatusCode();
+            String reasonPhrase = response.getStatusLine().getReasonPhrase();
+            String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            return new SimpleHttpResponse(statusCode, reasonPhrase, responseBody);
+
         } catch (Exception e) {
-            log.error("Exception sending Analytics data " + e.getMessage());
+            log.error("Exception sending data " + e.getMessage());
+            return new SimpleHttpResponse(-1, e.getMessage());
+        } finally {
+            // Entity already consumed via EntityUtils.toString() above
         }
-        return response;
     }
 
     public void setAlertForAllUsers(String alertMessage) {
@@ -833,6 +894,11 @@ public class UgandaEMRHttpURLConnection {
         } catch (AuthenticationException e) {
             log.error("Authentication exception during HTTP POST: " + e.getMessage(), e);
             throw e;
+        } finally {
+            // Ensure response entity is consumed to return connection to pool
+            if (response != null) {
+                EntityUtils.consumeQuietly(response.getEntity());
+            }
         }
 
         return map;
@@ -889,6 +955,11 @@ public class UgandaEMRHttpURLConnection {
         } catch (AuthenticationException e) {
             log.error("Authentication exception during HTTP GET: " + e.getMessage(), e);
             throw e;
+        } finally {
+            // Ensure response entity is consumed to return connection to pool
+            if (response != null) {
+                EntityUtils.consumeQuietly(response.getEntity());
+            }
         }
 
         return map;
