@@ -61,15 +61,15 @@ public class SendReportsTask extends AbstractTask {
     }
 
     public void sendPost(String requestBody){
-        HttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(syncTaskType.getUrl(), requestBody, syncTaskType.getUrlUserName(), syncTaskType.getUrlPassword());
-        if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK || httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_CREATED) {
+        UgandaEMRHttpURLConnection.SimpleHttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(syncTaskType.getUrl(), requestBody, syncTaskType.getUrlUserName(), syncTaskType.getUrlPassword());
+        if (httpResponse.getStatusCode() == HttpStatus.SC_OK || httpResponse.getStatusCode() == HttpStatus.SC_CREATED) {
             sent = true;
             log.info("Report  has been sent to central server");
             responseMessage = " Data Successfully Sent";
         } else {
-            log.info("Http response status code: " + httpResponse.getStatusLine().getStatusCode() + ". Reason: " + httpResponse.getStatusLine().getReasonPhrase());
-            responseMessage = httpResponse.getStatusLine().getReasonPhrase();
-            responseCode = httpResponse.getStatusLine().getStatusCode();
+            log.info("Http response status code: " + httpResponse.getStatusCode() + ". Reason: " + httpResponse.getReasonPhrase());
+            responseMessage = httpResponse.getReasonPhrase();
+            responseCode = httpResponse.getStatusCode();
         }
     }
 

@@ -101,12 +101,12 @@ public class SendAnalyticsDataToCentralServerTask extends AbstractTask {
             throw new RuntimeException(e);
         }
 
-        HttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(analyticsServerUrlEndPoint, facilityMetadata, syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID), syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID));
-        if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_OK || httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_CREATED) {
+        UgandaEMRHttpURLConnection.SimpleHttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(analyticsServerUrlEndPoint, facilityMetadata, syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID), syncGlobalProperties.getGlobalProperty(GP_DHIS2_ORGANIZATION_UUID));
+        if (httpResponse.getStatusCode() == HttpStatus.SC_OK || httpResponse.getStatusCode() == HttpStatus.SC_CREATED) {
             log.info("Analytics data has been sent to central server");
         } else {
-            log.info("Http response status code: " + httpResponse.getStatusLine().getStatusCode() + ". Reason: "
-                    + httpResponse.getStatusLine().getReasonPhrase());
+            log.info("Http response status code: " + httpResponse.getStatusCode() + ". Reason: "
+                    + httpResponse.getReasonPhrase());
         }
 
     }

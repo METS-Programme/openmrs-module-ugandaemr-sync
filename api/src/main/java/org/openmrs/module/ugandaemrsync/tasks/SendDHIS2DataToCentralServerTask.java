@@ -71,12 +71,11 @@ public class SendDHIS2DataToCentralServerTask extends AbstractTask  {
         log.error("Sending DHIS2 data to central server ");
         String bodyText = new String(this.data);
         try {
-            HttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_URL), bodyText, syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_USERNAME), syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_PASSWORD));
-            responseCode = httpResponse.getStatusLine().getStatusCode();
-            String responseMessage = httpResponse.getStatusLine().getReasonPhrase();
+            UgandaEMRHttpURLConnection.SimpleHttpResponse httpResponse = ugandaEMRHttpURLConnection.httpPost(syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_URL), bodyText, syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_USERNAME), syncGlobalProperties.getGlobalProperty(GP_DHIS2_SERVER_PASSWORD));
+            responseCode = httpResponse.getStatusCode();
+            String responseMessage = httpResponse.getReasonPhrase();
             if ((responseCode == 200 || responseCode == 201)) {
-                InputStream inputStreamReader = httpResponse.getEntity().getContent();
-                map = getMapOfResults(inputStreamReader, responseCode);
+                map = getMapOfResults(httpResponse.getResponseBody(), responseCode);
             } else {
                 map.put("responseCode", responseCode);
                 log.info(responseMessage);
@@ -88,24 +87,18 @@ public class SendDHIS2DataToCentralServerTask extends AbstractTask  {
 
     }
 
-	public Map getMapOfResults(InputStream inputStreamReader, int responseCode) throws IOException {
+	public Map getMapOfResults(String responseBody, int responseCode) throws IOException {
 		Map map = new HashMap();
-		InputStreamReader reader = new InputStreamReader(inputStreamReader);
-		StringBuilder buf = new StringBuilder();
-		char[] cbuf = new char[2048];
-		int num;
-		while (true) {
-			if (!(-1 != (num = reader.read(cbuf)))) break;
-			buf.append(cbuf, 0, num);
-		}
-		String result = buf.toString();
-		ObjectMapper mapper = new ObjectMapper();
-		if (isJSONValid(result)) {
-			map = mapper.readValue(result, Map.class);
+		if (responseBody != null) {
+			ObjectMapper mapper = new ObjectMapper();
+			if (isJSONValid(responseBody)) {
+				map = mapper.readValue(responseBody, Map.class);
+			}
 		}
 		map.put("responseCode", responseCode);
 		return map;
 	}
+
 	public boolean isJSONValid(String test) {
 		try {
 			new JSONObject(test);
@@ -118,5 +111,4 @@ public class SendDHIS2DataToCentralServerTask extends AbstractTask  {
 		}
 		return true;
 	}
-
 }
