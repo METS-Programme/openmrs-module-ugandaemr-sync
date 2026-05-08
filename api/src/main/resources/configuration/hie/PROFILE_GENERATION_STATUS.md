@@ -13,7 +13,7 @@ All 14 FHIR sync profile configuration files have been successfully updated with
 | profile-client-registry-integration.json | ccfafdf8-8ba1-4c00-986f-21392c1af1f6 | Client Registry Integration |
 | profile-cross-border-integration.json | f2190cf4-2236-11ee-be56-0242ac120002 | Cross Border Integration |
 | profile-ecbss-integration.json | 99c4d715-4fcf-4d95-a946-257c6de05cf7 | eCBSS Integration |
-| profile-hiv-case-based-surveillance.json | 56db6ac0-0e60-4ddc-8dfd-0035a4e64489 | HIV CASE BASED SURVEILLANCE |
+| profile-national-data-ware-house.json | 56db6ac0-0e60-4ddc-8dfd-0035a4e64489 | NATIONAL DATA WARE HOUSE |
 | profile-hiv-exposed-infant-data.json | e8a37e2f-6c78-476e-93a5-14aec653c406 | HIV Exposed Infant Data |
 | profile-hts-data.json | 527e1372-ff30-41e9-b139-d61b8a9ff197 | HTS Data |
 | profile-mortality-surveillance.json | 6acc9390-1049-41a5-979b-c57d895ca674 | Mortality Surveillance |

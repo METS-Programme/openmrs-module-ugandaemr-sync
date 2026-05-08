@@ -345,7 +345,7 @@ sudo -u openmrs ls {OPENMRS_DATA_DIR}/modules/ugandaemrsync/configuration/hie/
 
 **Profiles (12 from database + 2 examples = 14 total)**:
 - ✅ ART Access Integration
-- ✅ HIV CASE BASED SURVEILLANCE
+- ✅ NATIONAL DATA WARE HOUSE
 - ✅ Send Lab Request to ALIS Task
 - ✅ eCBSS Integration
 - ✅ HTS Data

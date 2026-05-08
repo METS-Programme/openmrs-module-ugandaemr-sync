@@ -30,7 +30,7 @@ All HIE configuration files in `/configuration/hie` have been updated to use UUI
 | `profile-tb-data` | `8963510e-404a-4363-a033-effc682fdacc` | TB Data |
 | `profile-hts-data` | `527e1372-ff30-41e9-b139-d61b8a9ff197` | HTS Data |
 | `profile-hiv-exposed-infant-data` | `e8a37e2f-6c78-476e-93a5-14aec653c406` | HIV Exposed Infant Data |
-| `profile-hiv-case-based-surveillance` | `56db6ac0-0e60-4ddc-8dfd-0035a4e64489` | HIV CASE BASED SURVEILLANCE |
+| `profile-national-data-ware-house` | `56db6ac0-0e60-4ddc-8dfd-0035a4e64489` | NATIONAL DATA WARE HOUSE |
 | `profile-mpox-screening` | `ef2afcf1-e2f7-4bb4-aa68-b18266e0b35f` | MPOX Screening |
 | `profile-mortality-surveillance` | `6acc9390-1049-41a5-979b-c57d895ca674` | Mortality Surveillance |
 | `profile-cross-border-integration` | `f2190cf4-2236-11ee-be56-0242ac120002` | Cross Border Integration |

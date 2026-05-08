@@ -20,7 +20,7 @@ Successfully regenerated all FHIR sync profile configuration files using actual 
 | Profile | Database UUID | Resource Types | Filters |
 |---------|---------------|----------------|----------|
 | ART Access Integration | 0a7fff77-6ac7-416c-831e-4e3f1f2c853b | Patient,Encounter,Observation | 11 filters (including observation codes) |
-| HIV CASE BASED SURVEILLANCE | 6511be5a-72f2-4638-a60b-78e31c3e2b28 | 11 resource types | 11 filters (including encounter types) |
+| NATIONAL DATA WARE HOUSE | 6511be5a-72f2-4638-a60b-78e31c3e2b28 | 11 resource types | 11 filters (including encounter types) |
 | Send Lab Request to ALIS Task | 2f0ef683-c988-448b-b928-e3e2cf6657af | 5 resource types | 11 filters |
 | eCBSS Integration | 99c4d715-4fcf-4d95-a946-257c6de05cf7 | 4 resource types | 11 filters |
 | HTS Data | e060d3ed-9cf4-4421-94f9-6b9b3b3fe6f0 | 4 resource types | 11 filters |
@@ -88,7 +88,7 @@ mvn clean install -DskipTests
 Several profiles now use different UUIDs from the actual database:
 
 - **ART Access Integration**: `0a7fff77-6ac7-416c-831e-4e3f1f2c853b` (was: `6a9b7f2e-0128-49a1-99a0-94a361b9e2ae`)
-- **HIV CASE BASED SURVEILLANCE**: `6511be5a-72f2-4638-a60b-78e31c3e2b28` (was: `56db6ac0-0e60-4ddc-8dfd-0035a4e64489`)
+- **NATIONAL DATA WARE HOUSE**: `6511be5a-72f2-4638-a60b-78e31c3e2b28` (was: `56db6ac0-0e60-4ddc-8dfd-0035a4e64489`)
 - **HTS Data**: `e060d3ed-9cf4-4421-94f9-6b9b3b3fe6f0` (was: `527e1372-ff30-41e9-b139-d61b8a9ff197`)
 - **TB Data**: `8adee026-d795-4f2a-aa29-6bafaf56b90e` (was: `8963510e-404a-4363-a033-effc682fdacc`)
 - **Client Registry Integration**: `84242661-aadf-42e4-9431-bf8afefb4433` (was: `ccfafdf8-8ba1-4c00-986f-21392c1af1f6`)
