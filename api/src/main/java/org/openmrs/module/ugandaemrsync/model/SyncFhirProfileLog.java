@@ -20,6 +20,14 @@ public class SyncFhirProfileLog extends BaseOpenmrsData implements Serializable 
     @Column(name = "profile_log_id", length = 11)
     private Integer profileLogId;
 
+    /**
+     * Default constructor that initializes required fields.
+     * Sets voided to false to satisfy database NOT NULL constraint.
+     */
+    public SyncFhirProfileLog() {
+        setVoided(false);
+    }
+
     @Column(name = "resource_type", length = 255)
     private String resourceType;
 

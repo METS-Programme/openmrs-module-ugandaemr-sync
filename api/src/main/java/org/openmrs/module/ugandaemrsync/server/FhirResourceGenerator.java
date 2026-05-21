@@ -147,6 +147,10 @@ public class FhirResourceGenerator {
 
         if (patientIdentifiers != null) {
             for (PatientIdentifier patientIdentifier : patientIdentifiers) {
+                if (patientIdentifier == null) {
+                    log.debug("Skipping null patient identifier in list");
+                    continue;
+                }
                 try {
                     Patient patient = patientIdentifier.getPatient();
                     if (patient != null) {
@@ -178,6 +182,10 @@ public class FhirResourceGenerator {
 
         if (encounters != null) {
             for (Encounter encounter : encounters) {
+                if (encounter == null) {
+                    log.debug("Skipping null encounter in list");
+                    continue;
+                }
                 try {
                     IBaseResource fhirEncounter = fhirEncounterService.get(encounter.getUuid());
                     if (fhirEncounter != null) {

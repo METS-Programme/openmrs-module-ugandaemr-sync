@@ -24,6 +24,14 @@ public class SyncFhirResource extends BaseOpenmrsData implements Serializable {
     @Column(name = "resource_id", length = 11)
     private int resourceId;
 
+    /**
+     * Default constructor that initializes required fields.
+     * Sets voided to false to satisfy database NOT NULL constraint.
+     */
+    public SyncFhirResource() {
+        setVoided(false);
+    }
+
     @Column(name = "synced")
     private Boolean synced;
 

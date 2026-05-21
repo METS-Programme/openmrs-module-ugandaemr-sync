@@ -282,7 +282,10 @@ public class UgandaEMRSyncDao {
      * @see org.openmrs.module.ugandaemrsync.api.UgandaEMRSyncService#saveSyncFHIRCase(SyncFhirCase)
      */
     public SyncFhirCase saveSyncFHIRCase(SyncFhirCase syncFHIRCase) {
-
+        // Fix for legacy data: ensure voided is never null (required by BaseOpenmrsData contract)
+        if (syncFHIRCase.getVoided() == null) {
+            syncFHIRCase.setVoided(false);
+        }
         getSession().saveOrUpdate(syncFHIRCase);
 
         return syncFHIRCase;

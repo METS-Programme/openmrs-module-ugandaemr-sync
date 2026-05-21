@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+                  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <!-- Fix NULL voided values in sync_fhir_case table -->
+    <changeSet id="ugandaemrsync-fix-voided-null-values-2024-05-21" author="samuel">
+        <comment>Fix NULL voided values in sync_fhir_case table - set to 0 (false) for data consistency</comment>
+
+        <update tableName="sync_fhir_case">
+            <column name="voided" valueNumeric="0"/>
+            <where>voided IS NULL</where>
+        </update>
+
+        <rollback>
+            <!-- No rollback needed as NULL values are invalid -->
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

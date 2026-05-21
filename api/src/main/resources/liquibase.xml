@@ -2088,6 +2088,7 @@
     <!-- Include error tracking changesets -->
     <include file="liquibase/changelogs/20240501-add-sync-error-tracking.xml" relativeToChangelogFile="false"/>
     <include file="liquibase/changelogs/20240501-add-case-generation-tracking.xml" relativeToChangelogFile="false"/>
+    <include file="liquibase/changelogs/20250521-fix-voided-null-values.xml" relativeToChangelogFile="false"/>
 
     <!-- Include FHIR profile scheduling system changesets -->
     <include file="liquibase/fhir2ProfileScheduling.xml" relativeToChangelogFile="false"/>

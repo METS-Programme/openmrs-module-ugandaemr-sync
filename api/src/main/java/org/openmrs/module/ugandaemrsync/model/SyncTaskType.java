@@ -20,6 +20,14 @@ public class SyncTaskType extends BaseOpenmrsData {
 	@Column(name = "sync_task_type_id")
 	private int syncTaskTypeId;
 
+	/**
+	 * Default constructor that initializes required fields.
+	 * Sets voided to false to satisfy database NOT NULL constraint.
+	 */
+	public SyncTaskType() {
+		setVoided(false);
+	}
+
 	@Basic
 	@Column(name = "name", length = 255)
 	private String name;

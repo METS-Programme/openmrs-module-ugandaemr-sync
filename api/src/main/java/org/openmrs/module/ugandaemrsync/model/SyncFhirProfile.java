@@ -24,6 +24,14 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
     @Column(name = "sync_fhir_profile_id")
     private Integer syncFhirProfileId;
 
+    /**
+     * Default constructor that initializes required fields.
+     * Sets voided to false to satisfy database NOT NULL constraint.
+     */
+    public SyncFhirProfile() {
+        setVoided(false);
+    }
+
     @Column(name = "name", length = 255)
     private String name;
 

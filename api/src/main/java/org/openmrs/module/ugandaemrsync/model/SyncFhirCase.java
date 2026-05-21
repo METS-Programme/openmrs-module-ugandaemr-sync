@@ -22,6 +22,14 @@ public class SyncFhirCase extends BaseOpenmrsData implements Serializable {
     @Column(name = "case_id",length = 11)
     private Integer caseId;
 
+    /**
+     * Default constructor that initializes required fields.
+     * Sets voided to false to satisfy database NOT NULL constraint.
+     */
+    public SyncFhirCase() {
+        setVoided(false);
+    }
+
     @Column(name = "case_identifier",length = 255)
     private String caseIdentifier;
 
@@ -167,6 +175,10 @@ public class SyncFhirCase extends BaseOpenmrsData implements Serializable {
      * Marks a successful resource generation with timestamp and status updates
      */
     public void markAsGenerationSuccess(Date generationDate) {
+        // Ensure voided is properly initialized (fix for legacy data where voided might be null)
+        if (this.getVoided() == null) {
+            this.setVoided(false);
+        }
         this.lastGenerationAttempt = generationDate;
         this.lastSuccessfulGenerationDate = generationDate;
         this.resourceGenerationStatus = "SUCCESS";
@@ -180,6 +192,10 @@ public class SyncFhirCase extends BaseOpenmrsData implements Serializable {
      * Marks a failed resource generation attempt with detailed error information
      */
     public void markAsGenerationFailure(Date attemptDate, SyncErrorType errorType, String errorMessage) {
+        // Ensure voided is properly initialized (fix for legacy data where voided might be null)
+        if (this.getVoided() == null) {
+            this.setVoided(false);
+        }
         this.lastGenerationAttempt = attemptDate;
         this.resourceGenerationStatus = "FAILED";
         this.lastGenerationErrorType = errorType.name();

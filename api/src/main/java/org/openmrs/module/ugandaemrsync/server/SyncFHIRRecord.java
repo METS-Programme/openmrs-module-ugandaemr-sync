@@ -29,6 +29,7 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirProfileLog;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncErrorType;
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
 import org.openmrs.module.ugandaemrsync.service.SyncCaseGenerationTrackingService;
 import org.openmrs.module.ugandaemrsync.service.SyncErrorTrackingService;
 import org.openmrs.module.ugandaemrsync.util.ConceptFilterUtils;
@@ -512,7 +513,7 @@ public class SyncFHIRRecord {
     }
 
 
-    private String generateFHIRCaseResource(SyncFhirProfile syncFhirProfile, SyncFhirCase syncFHIRCase) {
+    private String generateFHIRCaseResource(SyncFhirProfile syncFhirProfile, SyncFhirCase syncFHIRCase) throws UgandaEMRSyncException {
 
         Collection<String> resources = new ArrayList<>();
         List<Encounter> encounters = new ArrayList<>();
@@ -534,11 +535,19 @@ public class SyncFHIRRecord {
         String[] resourceTypes = syncFhirProfile.getResourceTypes().split(",");
         OrderService orderService = Context.getOrderService();
 
+        // Validate patient has required identifier type before processing any resources
+        PatientIdentifier patientIdentifier = getPatientIdentifierByType(syncFHIRCase.getPatient(), syncFhirProfile.getPatientIdentifierType());
+        if (patientIdentifier == null) {
+            String errorMsg = "Patient ID " + syncFHIRCase.getPatient().getId() + " does not have required identifier type: " + syncFhirProfile.getPatientIdentifierType().getName();
+            log.warn("Skipping case sync - " + errorMsg);
+            throw new UgandaEMRSyncException(UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR, errorMsg);
+        }
+
         for (String resource : resourceTypes) {
             switch (resource) {
                 case "Patient":
                     List<PatientIdentifier> patientIdentifiers = new ArrayList<>();
-                    patientIdentifiers.add(getPatientIdentifierByType(syncFHIRCase.getPatient(), syncFhirProfile.getPatientIdentifierType()));
+                    patientIdentifiers.add(patientIdentifier);
                     resources.addAll(groupInCaseBundle("Patient", getPatientResourceBundle(syncFhirProfile, patientIdentifiers, syncFHIRCase), syncFhirProfile.getPatientIdentifierType().getName()));
                     break;
                 case "Person":
