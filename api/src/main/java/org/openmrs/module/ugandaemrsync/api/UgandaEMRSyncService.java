@@ -24,6 +24,7 @@ import org.openmrs.module.ugandaemrsync.model.SyncFhirCase;
 import org.openmrs.module.ugandaemrsync.model.SyncTask;
 import org.openmrs.module.ugandaemrsync.model.SyncTaskType;
 import org.openmrs.module.ugandaemrsync.model.ViralLoadUploadResult;
+import org.openmrs.module.ugandaemrsync.exception.UgandaEMRSyncException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.ParseException;
@@ -557,7 +558,15 @@ public interface UgandaEMRSyncService extends OpenmrsService {
 
     public List<Map<String, String>> generateAndSyncBulkViralLoadRequest();
 
-    public Map sendSingleViralLoadOrder(Order order);
+    /**
+     * Sends a single viral load order to CPHL.
+     * Creates or updates a SyncTask record with the outcome.
+     *
+     * @param order the order to sync
+     * @return SyncTask record with statusCode indicating success (200/201/202/208) or failure (400/500/503)
+     * @throws UgandaEMRSyncException if validation fails or connection is unavailable
+     */
+    public SyncTask sendSingleViralLoadOrder(Order order) throws UgandaEMRSyncException;
 
     /**
      * Pulls lab results from CPHL for the given order (or resolves the order from the sync task),
