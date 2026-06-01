@@ -73,44 +73,23 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
     @Override
     @Secured(privilege = SyncPrivileges.VIEW_REFERRAL_ORDERS)
     public NeedsPaging<ReferralOrder> doGetAll(RequestContext context) throws ResponseException {
+        UgandaEMRSyncService syncService = Context.getService(UgandaEMRSyncService.class);
 
-        List<Concept> concepts = getConceptsFromSyncTaskType();
-        OrderService orderService = Context.getOrderService();
-        CareSetting careSetting = orderService.getCareSettingByUuid(CARE_SETTING_UUID_OPD);
+        // Use service method with SQL injection protection
+        // No filters passed to get all referral orders
+        List<Order> orders = syncService.getReferralOrders(null, null);
 
-        // Fetch the order type for drug orders
-        OrderType orderType = orderService.getOrderTypeByUuid(ORDER_TYPE_TEST_UUID);
-        OrderSearchCriteria orderSearchCriteria = new OrderSearchCriteria(
-                null,
-                careSetting,
-                concepts,
-                Collections.singletonList(orderType),
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                null,
-                null,
-                null,
-                true,
-                true,
-                true,
-                false
-        );
+        // Map to ReferralOrder DTOs
+        List<ReferralOrder> referralOrders = orders.stream()
+                .map(order -> {
+                    ReferralOrder referralOrder = new ReferralOrder();
+                    referralOrder.setOrder(order);
+                    referralOrder.setSyncTask(getSyncTaskByOrder(order));
+                    return referralOrder;
+                })
+                .collect(Collectors.toList());
 
-        List<Order> orders = Context.getOrderService().getOrders(orderSearchCriteria);
-        List<ReferralOrder> referralOrders = new ArrayList<>();
-        for (Order order : orders) {
-            ReferralOrder referralOrder = new ReferralOrder();
-            referralOrder.setOrder(order);
-            referralOrder.setSyncTask(getSyncTaskByOrder(order));
-
-            referralOrders.add(referralOrder);
-        }
-
-        return new NeedsPaging<ReferralOrder>(new ArrayList<ReferralOrder>(referralOrders), context);
+        return new NeedsPaging<>(referralOrders, context);
     }
 
     @Override
@@ -170,33 +149,15 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
     @Secured(privilege = SyncPrivileges.VIEW_REFERRAL_ORDERS)
     protected PageableResult doSearch(RequestContext context) {
         UgandaEMRSyncService syncService = Context.getService(UgandaEMRSyncService.class);
-        OrderService orderService = Context.getOrderService();
-        ConceptService conceptService = Context.getConceptService();
 
         String activatedOnOrAfterDateParam = context.getParameter("activatedOnOrAfterDate");
         String fulfillerStatusParam = context.getParameter("fulfillerStatus");
 
-        Order.FulfillerStatus fulfillerStatus = parseFulfillerStatus(fulfillerStatusParam);
+        // Use service method with SQL injection protection
+        List<Order> orders = syncService.getReferralOrders(activatedOnOrAfterDateParam, fulfillerStatusParam);
 
-        CareSetting careSetting = orderService.getCareSettingByUuid(CARE_SETTING_UUID_OPD);
-        OrderType orderType = orderService.getOrderTypeByUuid(ORDER_TYPE_TEST_UUID);
-        Date activatedDate = OpenmrsUtil.firstSecondOfDay(new Date());
-        if (activatedOnOrAfterDateParam != null && !activatedOnOrAfterDateParam.equals("")) {
-            activatedDate = OpenmrsUtil.firstSecondOfDay(syncService.getDateFromString(activatedOnOrAfterDateParam, "yyyy-MM-dd"));
-        }
-
-        OrderSearchCriteria searchCriteria = new OrderSearchCriteria(
-                null,
-                careSetting,
-                syncService.getReferralOrderConcepts(),
-                Collections.singletonList(orderType),
-                null, null, null, activatedDate,
-                false, null, null,
-                Order.Action.REVISE, fulfillerStatus,
-                true, true, true, false
-        );
-
-        List<ReferralOrder> referralOrders = orderService.getOrders(searchCriteria).stream().filter(order -> order.getAccessionNumber() != null && order.getInstructions().equals("REFER TO CPHL"))
+        // Map to ReferralOrder DTOs
+        List<ReferralOrder> referralOrders = orders.stream()
                 .map(order -> {
                     ReferralOrder referralOrder = new ReferralOrder();
                     referralOrder.setOrder(order);
@@ -204,6 +165,7 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
                     return referralOrder;
                 })
                 .collect(Collectors.toList());
+
         return new NeedsPaging<>(referralOrders, context);
     }
 
@@ -274,73 +236,5 @@ public class ReferralOrderResource extends DelegatingCrudResource<ReferralOrder>
         }
 
         return null;
-    }
-
-    private Order.FulfillerStatus parseFulfillerStatus(String status) {
-        if (status == null) {
-            return Order.FulfillerStatus.IN_PROGRESS;
-        }
-        switch (status.toUpperCase()) {
-            case "RECEIVED":
-                return Order.FulfillerStatus.RECEIVED;
-            case "COMPLETED":
-                return Order.FulfillerStatus.COMPLETED;
-            default:
-                return Order.FulfillerStatus.IN_PROGRESS;
-        }
-    }
-
-    /**
-     * Builds a list of Concepts from the SyncTaskType configured for Viral Load sync.
-     * The SyncTaskType.getDataType() must contain a comma-separated list of Concept IDs, UUIDs, or Names.
-     *
-     * @return List of Concepts resolved from the SyncTaskType dataType.
-     */
-    public static List<Concept> getConceptsFromSyncTaskType() {
-
-        UgandaEMRSyncService syncService = Context.getService(UgandaEMRSyncService.class);
-        SyncTaskType syncTaskType = syncService.getSyncTaskTypeByUUID(VIRAL_LOAD_SYNC_TYPE_UUID);
-
-        List<Concept> concepts = new ArrayList<>();
-
-        // Early exit if syncTaskType or dataType is missing
-        if (syncTaskType == null) {
-            //log.warning("SyncTaskType not found for UUID: " + VIRAL_LOAD_SYNC_TYPE_UUID);
-            return concepts;
-        }
-
-        String dataType = syncTaskType.getDataType();
-        if (StringUtils.isBlank(dataType)) {
-            //log.warning("SyncTaskType dataType is blank for UUID: " + VIRAL_LOAD_SYNC_TYPE_UUID);
-            return concepts;
-        }
-
-        // Parse and resolve each token
-        for (String token : dataType.split(",")) {
-            token = token.trim();
-            if (token.isEmpty()) {
-                continue;
-            }
-
-            Concept concept = null;
-            if (StringUtils.isNumeric(token)) {
-                // Concept ID
-                concept = Context.getConceptService().getConcept(Integer.parseInt(token));
-            } else {
-                // Try UUID, then Name
-                concept = Context.getConceptService().getConceptByUuid(token);
-                if (concept == null) {
-                    concept = Context.getConceptService().getConceptByName(token);
-                }
-            }
-
-            if (concept != null) {
-                concepts.add(concept);
-            } else {
-                //log.warning("No concept found for token: " + token);
-            }
-        }
-
-        return concepts;
     }
 }

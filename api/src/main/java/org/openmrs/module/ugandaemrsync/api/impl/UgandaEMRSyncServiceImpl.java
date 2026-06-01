@@ -4225,6 +4225,45 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
     @Override
+    public List<Order> getReferralOrders(String activatedOnOrAfterDate, String fulfillerStatus) {
+        try {
+            // Get referral concepts for filtering
+            List<Concept> concepts = getReferralOrderConcepts();
+            if (concepts.isEmpty()) {
+                log.warn("No referral order concepts configured");
+                return new ArrayList<>();
+            }
+
+            List<Integer> conceptIds = concepts.stream()
+                    .map(Concept::getConceptId)
+                    .collect(Collectors.toList());
+
+            // Parse optional date filter
+            Date activatedDate = null;
+            if (activatedOnOrAfterDate != null && !activatedOnOrAfterDate.trim().isEmpty()) {
+                try {
+                    activatedDate = getDateFromString(activatedOnOrAfterDate, "yyyy-MM-dd");
+                } catch (Exception e) {
+                    log.warn("Invalid date format: " + activatedOnOrAfterDate);
+                }
+            }
+
+            // Call DAO to get orders directly (single query, no N+1)
+            return dao.getReferralOrders(
+                    conceptIds,
+                    CARE_SETTING_UUID_OPD,
+                    ORDER_TYPE_TEST_UUID,
+                    activatedDate,
+                    fulfillerStatus
+            );
+
+        } catch (Exception e) {
+            log.error("Error getting referral orders", e);
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
     public List<Integer> getPatientsByOrderTypeAndDate(Integer orderTypeId, Date dateFrom) {
         return dao.getPatientsByOrderTypeAndDate(orderTypeId, dateFrom);
     }

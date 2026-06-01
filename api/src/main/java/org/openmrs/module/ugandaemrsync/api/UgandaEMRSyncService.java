@@ -603,6 +603,16 @@ public interface UgandaEMRSyncService extends OpenmrsService {
     public List getReferralOrderConcepts();
 
     /**
+     * Gets referral orders with optional filters using secure SQL.
+     * All parameters are properly bound to prevent SQL injection.
+     *
+     * @param activatedOnOrAfterDate optional filter for orders activated on or after this date (yyyy-MM-dd format)
+     * @param fulfillerStatus optional filter for orders with specific fulfiller status (RECEIVED, COMPLETED, IN_PROGRESS)
+     * @return list of Order objects matching the criteria
+     */
+    public List<Order> getReferralOrders(String activatedOnOrAfterDate, String fulfillerStatus);
+
+    /**
      * Secure method to get patients by order type and date
      * @param orderTypeId the order type ID
      * @param dateFrom the start date

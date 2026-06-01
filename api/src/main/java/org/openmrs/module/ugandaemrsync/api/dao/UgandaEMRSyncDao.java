@@ -645,4 +645,94 @@ public class UgandaEMRSyncDao {
         criteria.add(Restrictions.eq("voided", false));
         return criteria.list();
     }
+
+    /**
+     * Gets referral orders with optional filters using JPA CriteriaBuilder.
+     * Following OpenMRS core patterns - type-safe and modern JPA approach.
+     *
+     * @param conceptIds list of concept IDs for referral order concepts
+     * @param careSettingUuid the care setting UUID (e.g., OPD)
+     * @param orderTypeUuid the order type UUID (e.g., Test Order)
+     * @param activatedOnOrAfterDate optional filter for orders activated on or after this date
+     * @param fulfillerStatus optional filter for orders with specific fulfiller status
+     * @return list of Orders matching the criteria
+     */
+    public List<org.openmrs.Order> getReferralOrders(List<Integer> conceptIds, String careSettingUuid,
+                                                       String orderTypeUuid, Date activatedOnOrAfterDate,
+                                                       String fulfillerStatus) {
+        org.hibernate.SessionFactory hibernateSessionFactory = Context.getRegisteredComponent("sessionFactory", org.hibernate.SessionFactory.class);
+        org.hibernate.Session session = hibernateSessionFactory.getCurrentSession();
+        javax.persistence.criteria.CriteriaBuilder cb = session.getCriteriaBuilder();
+        javax.persistence.criteria.CriteriaQuery<org.openmrs.Order> cq = cb.createQuery(org.openmrs.Order.class);
+        javax.persistence.criteria.Root<org.openmrs.Order> root = cq.from(org.openmrs.Order.class);
+
+        List<javax.persistence.criteria.Predicate> predicates = createReferralOrderCriteria(cb, root, conceptIds, careSettingUuid, orderTypeUuid, fulfillerStatus);
+
+        // Optional date filter
+        if (activatedOnOrAfterDate != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("dateCreated"), activatedOnOrAfterDate));
+        }
+
+        cq.where(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
+        cq.orderBy(cb.desc(root.get("dateCreated")));
+
+        return session.createQuery(cq).getResultList();
+    }
+
+    /**
+     * Creates predicates for referral order queries following OpenMRS core patterns.
+     *
+     * @param cb CriteriaBuilder
+     * @param root Root<Order> query root
+     * @param conceptIds list of concept IDs for filtering
+     * @param careSettingUuid care setting UUID filter
+     * @param orderTypeUuid order type UUID filter
+     * @param fulfillerStatus optional fulfiller status filter
+     * @return list of predicates for the query
+     */
+    private List<javax.persistence.criteria.Predicate> createReferralOrderCriteria(javax.persistence.criteria.CriteriaBuilder cb,
+                                                                                      javax.persistence.criteria.Root<org.openmrs.Order> root,
+                                                                                      List<Integer> conceptIds,
+                                                                                      String careSettingUuid,
+                                                                                      String orderTypeUuid,
+                                                                                      String fulfillerStatus) {
+        List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+        // Join with careSetting and orderType for UUID filtering
+        javax.persistence.criteria.Join<org.openmrs.Order, org.openmrs.CareSetting> careSetting = root.join("careSetting");
+        javax.persistence.criteria.Join<org.openmrs.Order, org.openmrs.OrderType> orderType = root.join("orderType");
+        javax.persistence.criteria.Join<org.openmrs.Order, org.openmrs.Concept> concept = root.join("concept");
+
+        // CareSetting UUID filter
+        if (careSettingUuid != null) {
+            predicates.add(cb.equal(careSetting.get("uuid"), careSettingUuid));
+        }
+
+        // OrderType UUID filter
+        if (orderTypeUuid != null) {
+            predicates.add(cb.equal(orderType.get("uuid"), orderTypeUuid));
+        }
+
+        // Concept IDs filter
+        if (conceptIds != null && !conceptIds.isEmpty()) {
+            predicates.add(concept.get("conceptId").in(conceptIds));
+        }
+
+        // Required filters for referral orders
+        predicates.add(cb.equal(root.get("instructions"), "REFER TO CPHL"));
+        predicates.add(cb.isNotNull(root.get("accessionNumber")));
+        predicates.add(cb.isFalse(root.get("voided")));
+
+        // Optional fulfiller status filter
+        if (fulfillerStatus != null && !fulfillerStatus.trim().isEmpty()) {
+            try {
+                org.openmrs.Order.FulfillerStatus status = org.openmrs.Order.FulfillerStatus.valueOf(fulfillerStatus.toUpperCase());
+                predicates.add(cb.equal(root.get("fulfillerStatus"), status));
+            } catch (IllegalArgumentException e) {
+                logger.warn("Invalid fulfiller status: {}", fulfillerStatus);
+            }
+        }
+
+        return predicates;
+    }
 }
