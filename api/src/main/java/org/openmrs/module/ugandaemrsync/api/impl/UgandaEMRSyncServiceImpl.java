@@ -1694,47 +1694,110 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         }
     }
 
-    private String generateSpecimen(Order order) {
+    private String generateSpecimen(Order order) throws UgandaEMRSyncException {
+        if (order == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen: order is null"
+            );
+        }
+
+        if (!(order instanceof TestOrder)) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen: order is not a TestOrder"
+            );
+        }
+
+        TestOrder testOrder = (TestOrder) order;
+
+        // Validate required fields
+        if (testOrder.getSpecimenSource() == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen for order " + testOrder.getAccessionNumber() + ": specimenSource is null"
+            );
+        }
+
+        if (testOrder.getPatient() == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen for order " + testOrder.getAccessionNumber() + ": patient is null"
+            );
+        }
+
+        if (testOrder.getOrderer() == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen for order " + testOrder.getAccessionNumber() + ": orderer is null"
+            );
+        }
+
+        if (testOrder.getDateActivated() == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Cannot generate specimen for order " + testOrder.getAccessionNumber() + ": dateActivated is null"
+            );
+        }
+
         try {
-            if (order != null) {
-                String specimenString = "{\"fullUrl\":\"urn:uuid:%s\",\"resource\":{\"resourceType\":\"Specimen\",\"id\":\"%s\",\"type\":{\"coding\":[{\"system\":\"http://snomed.info/sct\",\"code\":\"%s\",\"display\":\"Plasma specimen\"}]},\"subject\":{\"reference\":\"urn:uuid:%s\"},\"collection\":{\"collectedDateTime\":\"%s\",\"collector\":{\"reference\":\"Practitioner/%s\"}},\"processing\":[{\"description\":\"Centrifugation\",\"timeDateTime\":\"%s\"}]},\"request\":{\"method\":\"POST\",\"url\":\"Specimen\"}}";
-                TestOrder testOrder = (TestOrder) order;
-                JSONObject jsonObject = new JSONObject(specimenString);
-                JSONArray codding = new JSONArray();
+            String specimenString = "{\"fullUrl\":\"urn:uuid:%s\",\"resource\":{\"resourceType\":\"Specimen\",\"id\":\"%s\",\"type\":{\"coding\":[{\"system\":\"http://snomed.info/sct\",\"code\":\"%s\",\"display\":\"Plasma specimen\"}]},\"subject\":{\"reference\":\"Patient/%s\",\"type\":\"Patient\"},\"collection\":{\"collectedDateTime\":\"%s\",\"collector\":{\"reference\":\"Practitioner/%s\"}},\"processing\":[{\"description\":\"Centrifugation\",\"timeDateTime\":\"%s\"}]},\"request\":{\"method\":\"POST\",\"url\":\"Specimen\"}}";
+            JSONObject jsonObject = new JSONObject(specimenString);
+            JSONArray codding = new JSONArray();
 
-                if (testOrder.getAccessionNumber() != null) {
-                    jsonObject.put("fullUrl", "urn:uuid:" + testOrder.getAccessionNumber());
-                    jsonObject.getJSONObject("resource").put("id", order.getAccessionNumber());
-                }
+            if (testOrder.getAccessionNumber() != null) {
+                jsonObject.put("fullUrl", "urn:uuid:" + testOrder.getAccessionNumber());
+                jsonObject.getJSONObject("resource").put("id", testOrder.getAccessionNumber());
+            }
 
-                for (ConceptMap conceptMap : testOrder.getSpecimenSource().getConceptMappings()) {
-
-                    if (conceptMap != null && conceptMap.getConceptReferenceTerm() != null && conceptMap.getConceptReferenceTerm().getConceptSource() != null) {
+            // Process specimen source concept mappings
+            Collection<ConceptMap> conceptMappings = testOrder.getSpecimenSource().getConceptMappings();
+            if (conceptMappings != null && !conceptMappings.isEmpty()) {
+                for (ConceptMap conceptMap : conceptMappings) {
+                    if (conceptMap != null && conceptMap.getConceptReferenceTerm() != null &&
+                            conceptMap.getConceptReferenceTerm().getConceptSource() != null) {
                         String system = null;
                         if (conceptMap.getConceptReferenceTerm().getConceptSource().getHl7Code() != null) {
                             system = conceptMap.getConceptReferenceTerm().getConceptSource().getHl7Code();
                         } else {
                             system = conceptMap.getConceptReferenceTerm().getConceptSource().getName();
                         }
-                        codding.put(new JSONObject(String.format("{\"system\":\"%s\",\"code\":\"%s\",\"display\":\"%s\"}", system, conceptMap.getConceptReferenceTerm().getCode(), conceptMap.getConceptReferenceTerm().getName())));
+                        codding.put(new JSONObject(String.format(
+                                "{\"system\":\"%s\",\"code\":\"%s\",\"display\":\"%s\"}",
+                                system,
+                                conceptMap.getConceptReferenceTerm().getCode(),
+                                conceptMap.getConceptReferenceTerm().getName()
+                        )));
                     }
                 }
-
-
-                jsonObject.getJSONObject("resource").put("collection", new JSONObject(String.format("{\"collectedDateTime\":\"%s\",\"collector\":{\"reference\":\"Practitioner/%s\"}}", testOrder.getDateActivated().toString().replace(" ", "T"), testOrder.getOrderer().getUuid())));
-
-                jsonObject.getJSONObject("resource").put("processing", new JSONArray(String.format("[{\"description\":\"Centrifugation\",\"timeDateTime\":\"%s\"}]", testOrder.getDateActivated().toString().replace(" ", "T"))));
-
-                jsonObject.getJSONObject("resource").getJSONObject("type").put("coding", codding);
-                jsonObject.getJSONObject("resource").getJSONObject("subject").put("reference", "urn:uuid:" + order.getPatient().getUuid());
-
-                return jsonObject.toString();
+            } else {
+                log.warn("No concept mappings found for specimen source in order: " + testOrder.getAccessionNumber());
             }
-        } catch (Exception exception) {
-            log.error(exception);
-        }
 
-        return null;
+            jsonObject.getJSONObject("resource").put("collection", new JSONObject(String.format(
+                    "{\"collectedDateTime\":\"%s\",\"collector\":{\"reference\":\"Practitioner/%s\"}}",
+                    testOrder.getDateActivated().toString().replace(" ", "T"),
+                    testOrder.getOrderer().getUuid()
+            )));
+
+            jsonObject.getJSONObject("resource").put("processing", new JSONArray(String.format(
+                    "[{\"description\":\"Centrifugation\",\"timeDateTime\":\"%s\"}]",
+                    testOrder.getDateActivated().toString().replace(" ", "T")
+            )));
+
+            jsonObject.getJSONObject("resource").getJSONObject("type").put("coding", codding);
+            jsonObject.getJSONObject("resource").getJSONObject("subject").put("reference", "Patient/" + testOrder.getPatient().getUuid());
+            jsonObject.getJSONObject("resource").getJSONObject("subject").put("type", "Patient");
+
+            return jsonObject.toString();
+        } catch (Exception exception) {
+            log.error("Error generating specimen for order: " + testOrder.getAccessionNumber(), exception);
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.PARSING_ERROR,
+                    "Failed to generate specimen for order " + testOrder.getAccessionNumber() + ": " + exception.getMessage(),
+                    exception
+            );
+        }
     }
 
     /**
@@ -2816,7 +2879,23 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         }
         // Process each order
         for (Order order : orders) {
-            responses.add(sendSingleViralLoadOrder(order));
+            try {
+                SyncTask syncTask = sendSingleViralLoadOrder(order);
+                // Convert SyncTask to Map for compatibility with existing bulk API
+                Map<String, String> responseMap = new HashMap<>();
+                responseMap.put("accessionNumber", syncTask.getSyncTask());
+                responseMap.put("statusCode", String.valueOf(syncTask.getStatusCode()));
+                responseMap.put("status", syncTask.getStatus());
+                responseMap.put("responseCode", String.valueOf(syncTask.getStatusCode()));
+                responseMap.put("responseMessage", syncTask.getStatus());
+                responses.add(responseMap);
+            } catch (UgandaEMRSyncException e) {
+                // Add error response for this order
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("message", "Failed to sync order " + order.getAccessionNumber() + ": " + e.getMessage());
+                errorResponse.put("statusCode", "500");
+                responses.add(errorResponse);
+            }
         }
 
         return responses;
@@ -2889,50 +2968,91 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
 
 
     @Override
-    public Map sendSingleViralLoadOrder(Order order) {
-        Map response = new HashMap<>();
-        UgandaEMRHttpURLConnection ugandaEMRHttpURLConnection = new UgandaEMRHttpURLConnection();
+    public SyncTask sendSingleViralLoadOrder(Order order) throws UgandaEMRSyncException {
+        if (order == null || order.getAccessionNumber() == null) {
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    "Invalid order: null accession number"
+            );
+        }
+
+        UgandaEMRHttpURLConnection connection = new UgandaEMRHttpURLConnection();
         UgandaEMRSyncService ugandaEMRSyncService = Context.getService(UgandaEMRSyncService.class);
         SyncTaskType syncTaskType = ugandaEMRSyncService.getSyncTaskTypeByUUID(VIRAL_LOAD_SYNC_TYPE_UUID);
 
-        if (!ugandaEMRHttpURLConnection.isConnectionAvailable()) {
-            response.put("responseMessage", "No Internet Connection to send order" + order.getAccessionNumber());
-            return response;
+        // Check connection - throw instead of returning error Map
+        if (!connection.isConnectionAvailable()) {
+            String message = "No Internet Connection to send order: " + order.getAccessionNumber();
+            logTransaction(syncTaskType, 503, message, order.getAccessionNumber(),
+                    message, new Date(), syncTaskType.getUrl(), false, false);
+            SyncTask task = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+            if (task != null) {
+                return task;
+            }
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.CONNECTION_FAILED,
+                    message
+            );
         }
 
-        if (!isOrderSynced(order, syncTaskType)) {
-            if (order != null && order.getAccessionNumber() != null && !isValidCPHLBarCode(order.getAccessionNumber())) {
-                String message = String.format("Order: %s does not have valid bar code.", order.getAccessionNumber());
-                logTransaction(syncTaskType, 500, message, order.getAccessionNumber(), message, new Date(), syncTaskType.getUrl(), false, false);
-                response.put("responseMessage", message);
-                return response;
-            }
-
-            String payload = processResourceFromOrder(order);
-
-            if (payload != null) {
-                if (!validateTestFHIRBundle(payload, order.getConcept().getUuid())) {
-                    String missingObsInPayload = String.format(
-                            "Order: %s is not valid due to missing %s in the required field",
-                            order.getAccessionNumber(),
-                            getMissingVLFHIRCodesAsString(payload, order.getConcept().getUuid())
-                    );
-                    logTransaction(syncTaskType, 500, missingObsInPayload, order.getAccessionNumber(),
-                            missingObsInPayload,
-                            new Date(), syncTaskType.getUrl(), false, false);
-                    response.put("responseMessage", missingObsInPayload);
-                } else {
-                    response = sendViralLoadToCPHL(syncTaskType, payload, ugandaEMRHttpURLConnection, order);
-                }
-            } else {
-                String error = "UgandaEMR Internal Server error. There was an error processing order: " + order.getAccessionNumber();
-                response.put("responseMessage", error);
-                logTransaction(syncTaskType, 500, error, order.getAccessionNumber(), error, new Date(), syncTaskType.getUrl(), false, false);
-            }
-        } else {
-            response.put("responseMessage", "Order: " + order.getAccessionNumber() + " is already synced");
+        // Check if already synced - return existing SyncTask
+        SyncTask existingTask = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+        if (existingTask != null && isSuccessStatusCode(existingTask.getStatusCode())) {
+            return existingTask;
         }
-        return response;
+
+        // Validate barcode
+        if (!isValidCPHLBarCode(order.getAccessionNumber())) {
+            String message = String.format("Order: %s does not have valid bar code.", order.getAccessionNumber());
+            logTransaction(syncTaskType, 400, message, order.getAccessionNumber(),
+                    message, new Date(), syncTaskType.getUrl(), false, false);
+            SyncTask task = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+            if (task != null) {
+                return task;
+            }
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    message
+            );
+        }
+
+        // Process payload
+        String payload = processResourceFromOrder(order);
+        if (payload == null) {
+            String error = "Failed to process order payload: " + order.getAccessionNumber();
+            logTransaction(syncTaskType, 500, error, order.getAccessionNumber(),
+                    error, new Date(), syncTaskType.getUrl(), false, false);
+            SyncTask task = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+            if (task != null) {
+                return task;
+            }
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.SYNC_FAILED,
+                    error
+            );
+        }
+
+        // Validate FHIR bundle
+        if (!validateTestFHIRBundle(payload, order.getConcept().getUuid())) {
+            String message = String.format(
+                    "Order: %s is not valid due to missing %s in the required field",
+                    order.getAccessionNumber(),
+                    getMissingVLFHIRCodesAsString(payload, order.getConcept().getUuid())
+            );
+            logTransaction(syncTaskType, 400, message, order.getAccessionNumber(),
+                    message, new Date(), syncTaskType.getUrl(), false, false);
+            SyncTask task = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+            if (task != null) {
+                return task;
+            }
+            throw new UgandaEMRSyncException(
+                    UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
+                    message
+            );
+        }
+
+        // Send to CPHL
+        return sendViralLoadToCPHL(syncTaskType, payload, connection, order);
     }
 
 
@@ -3513,13 +3633,11 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
 
-    private Map sendViralLoadToCPHL(SyncTaskType syncTaskType, String payload, UgandaEMRHttpURLConnection ugandaEMRHttpURLConnection, Order order) {
-        Map<String, Object> syncResponse = new HashMap<>();
-
+    private SyncTask sendViralLoadToCPHL(SyncTaskType syncTaskType, String payload, UgandaEMRHttpURLConnection connection, Order order) {
         try {
             // Use sendPostWithRetry for better error handling and automatic retry on transient failures
             // The lenient SSL configuration handles self-signed certificates automatically
-            syncResponse = ugandaEMRHttpURLConnection.sendPostWithRetry(
+            Map<String, Object> syncResponse = connection.sendPostWithRetry(
                     syncTaskType.getUrl(),
                     payload,
                     syncTaskType.getUrlUserName(),
@@ -3528,44 +3646,75 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
                     "ViralLoadToCPHL"
             );
 
-            if (syncResponse != null) {
-                String responseFromCPHLServer = String.format("Response From CPHL Server: %s", syncResponse.get("responseMessage"));
-                Map responseType = handleReturnedResponses(order, syncResponse);
-                int responseCode = Integer.parseInt(syncResponse.getOrDefault("responseCode", "500").toString());
-
-                // Handle duplicate case with a 400 response
-                if (responseCode == 400 && "Duplicate".equalsIgnoreCase(String.valueOf(responseType.get("responseType")))) {
-                    responseCode = 200;
-                    responseFromCPHLServer = String.format("Response From CPHL Server: %s", responseType.get("responseMessage"));
-                }
-
-                boolean isSuccess = responseCode == 200 || responseCode == 201 || responseCode == 202 || responseCode == 208;
-                String accessionNumber = order.getAccessionNumber();
-                String url = syncTaskType.getUrl();
-
-                if (isSuccess) {
-
-                    for (Order orderToComplete : order.getEncounter().getOrders().stream().filter(order1 -> order1.isActive() && order1.getAccessionNumber()!=null).collect(Collectors.toList())) {
-                        if (payload.contains(orderToComplete.getAccessionNumber())) {
-                            Context.getOrderService().updateOrderFulfillerStatus(orderToComplete, Order.FulfillerStatus.RECEIVED, responseFromCPHLServer);
-                        }
-                    }
-                }
-
-                logTransaction(syncTaskType, responseCode, responseFromCPHLServer, accessionNumber, responseFromCPHLServer, new Date(), url, isSuccess, false);
-
-                syncResponse.put("responseMessage", responseFromCPHLServer);
+            if (syncResponse == null) {
+                String errorMessage = "Received null response from CPHL for order: " + order.getAccessionNumber();
+                logTransaction(syncTaskType, 500, errorMessage, order.getAccessionNumber(),
+                        errorMessage, new Date(), syncTaskType.getUrl(), false, false);
+                return getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
             }
 
+            String responseFromCPHLServer = String.format("Response From CPHL Server: %s", syncResponse.get("responseMessage"));
+            Map responseType = handleReturnedResponses(order, syncResponse);
+            int responseCode = Integer.parseInt(syncResponse.getOrDefault("responseCode", "500").toString());
+
+            // Handle duplicate case with a 400 response
+            if (responseCode == 400 && "Duplicate".equalsIgnoreCase(String.valueOf(responseType.get("responseType")))) {
+                responseCode = 200;
+                responseFromCPHLServer = String.format("Response From CPHL Server: %s", responseType.get("responseMessage"));
+            }
+
+            boolean isSuccess = responseCode == 200 || responseCode == 201 || responseCode == 202 || responseCode == 208;
+            String accessionNumber = order.getAccessionNumber();
+            String url = syncTaskType.getUrl();
+
+            if (isSuccess) {
+                for (Order orderToComplete : order.getEncounter().getOrders().stream()
+                        .filter(o -> o.isActive() && o.getAccessionNumber() != null)
+                        .collect(Collectors.toList())) {
+                    if (payload.contains(orderToComplete.getAccessionNumber())) {
+                        Context.getOrderService().updateOrderFulfillerStatus(
+                                orderToComplete, Order.FulfillerStatus.RECEIVED, responseFromCPHLServer);
+                    }
+                }
+            }
+
+            // Log transaction - this creates/updates SyncTask with statusCode
+            logTransaction(syncTaskType, responseCode, responseFromCPHLServer, accessionNumber,
+                    responseFromCPHLServer, new Date(), url, false, false);
+
+            // Return the SyncTask that was just created/updated
+            return getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+
         } catch (Exception e) {
-            String errorMessage = "UgandaEMR Internal Server error. There was an error processing order: " + e.getMessage();
-            log.error("Failed to create sync task", e);
-            syncResponse.put("responseMessage", errorMessage);
+            String errorMessage = "HTTP_POST: ViralLoadToCPHL failed: " + e.getMessage();
+            log.error("Failed to sync viral load order: " + order.getAccessionNumber(), e);
 
-            logTransaction(syncTaskType, 500, errorMessage, order.getAccessionNumber(), errorMessage, new Date(), syncTaskType.getUrl(), false, false);
+            // Log failure - creates SyncTask with statusCode=500
+            logTransaction(syncTaskType, 500, errorMessage, order.getAccessionNumber(),
+                    errorMessage, new Date(), syncTaskType.getUrl(), false, false);
+
+            // Return the SyncTask that was just created
+            SyncTask task = getLatestSyncTask(order.getAccessionNumber(), syncTaskType);
+            return task != null ? task : createFailureSyncTask(order, syncTaskType, errorMessage);
         }
+    }
 
-        return syncResponse;
+    /**
+     * Creates a failure SyncTask when one doesn't exist yet.
+     * This should rarely happen since logTransaction creates the task, but it's a safety fallback.
+     */
+    private SyncTask createFailureSyncTask(Order order, SyncTaskType syncTaskType, String errorMessage) {
+        SyncTask task = new SyncTask();
+        task.setCreator(Context.getUserService().getUser(1));
+        task.setSentToUrl(syncTaskType.getUrl());
+        task.setSyncTask(order.getAccessionNumber());
+        task.setSyncTaskType(syncTaskType);
+        task.setStatus(errorMessage);
+        task.setStatusCode(500);
+        task.setDateSent(new Date());
+        task.setRequireAction(false);
+        task.setActionCompleted(false);
+        return saveSyncTask(task);
     }
 
     private Map handleReturnedResponses(Order order, Map response) {
@@ -3596,7 +3745,7 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
 
-    private String processResourceFromOrder(Order order) {
+    private String processResourceFromOrder(Order order) throws UgandaEMRSyncException {
         String healthCenterIdentifier = "";
         try {
             healthCenterIdentifier = Context.getAdministrationService().getGlobalProperty(GP_DHIS2);
@@ -3617,7 +3766,8 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
                     if (StringUtils.isNotBlank(orderFromEncounter.getAccessionNumber())) {
                         orderList.add(orderFromEncounter);
                     } else {
-                        throw new IllegalArgumentException(
+                        throw new UgandaEMRSyncException(
+                                UgandaEMRSyncException.ErrorCode.VALIDATION_ERROR,
                                 String.format("Order: %s that is part of this test does not have a barcode or sample Id",
                                         orderFromEncounter.getConcept().getDisplayString())
                         );
@@ -4075,6 +4225,45 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
     }
 
     @Override
+    public List<Order> getReferralOrders(String activatedOnOrAfterDate, String fulfillerStatus) {
+        try {
+            // Get referral concepts for filtering
+            List<Concept> concepts = getReferralOrderConcepts();
+            if (concepts.isEmpty()) {
+                log.warn("No referral order concepts configured");
+                return new ArrayList<>();
+            }
+
+            List<Integer> conceptIds = concepts.stream()
+                    .map(Concept::getConceptId)
+                    .collect(Collectors.toList());
+
+            // Parse optional date filter
+            Date activatedDate = null;
+            if (activatedOnOrAfterDate != null && !activatedOnOrAfterDate.trim().isEmpty()) {
+                try {
+                    activatedDate = getDateFromString(activatedOnOrAfterDate, "yyyy-MM-dd");
+                } catch (Exception e) {
+                    log.warn("Invalid date format: " + activatedOnOrAfterDate);
+                }
+            }
+
+            // Call DAO to get orders directly (single query, no N+1)
+            return dao.getReferralOrders(
+                    conceptIds,
+                    CARE_SETTING_UUID_OPD,
+                    ORDER_TYPE_TEST_UUID,
+                    activatedDate,
+                    fulfillerStatus
+            );
+
+        } catch (Exception e) {
+            log.error("Error getting referral orders", e);
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
     public List<Integer> getPatientsByOrderTypeAndDate(Integer orderTypeId, Date dateFrom) {
         return dao.getPatientsByOrderTypeAndDate(orderTypeId, dateFrom);
     }
@@ -4274,6 +4463,35 @@ public class UgandaEMRSyncServiceImpl extends BaseOpenmrsService implements Ugan
         org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao historyDao =
             Context.getRegisteredComponents(org.openmrs.module.ugandaemrsync.api.dao.SyncFhirProfileExecutionHistoryDao.class).get(0);
         return historyDao.saveOrUpdate(history);
+    }
+
+    /**
+     * Get the most recent SyncTask for a given accession number and sync task type.
+     *
+     * @param accessionNumber The order's accession number
+     * @param syncTaskType The sync task type
+     * @return The most recent SyncTask, or null if none exists
+     */
+    private SyncTask getLatestSyncTask(String accessionNumber, SyncTaskType syncTaskType) {
+        if (accessionNumber == null || syncTaskType == null) {
+            return null;
+        }
+        List<SyncTask> tasks = getSyncTasksBySyncTaskId(accessionNumber);
+        return tasks.stream()
+                .filter(t -> syncTaskType.equals(t.getSyncTaskType()))
+                .max(java.util.Comparator.comparing(SyncTask::getDateSent))
+                .orElse(null);
+    }
+
+    /**
+     * Check if a status code indicates success.
+     *
+     * @param statusCode The HTTP status code
+     * @return true if the status code indicates success (200, 201, 202, or 208)
+     */
+    private boolean isSuccessStatusCode(Integer statusCode) {
+        return statusCode != null &&
+               (statusCode == 200 || statusCode == 201 || statusCode == 202 || statusCode == 208);
     }
 }
 
