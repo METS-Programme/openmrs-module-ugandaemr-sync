@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Implementation of FHIR profile import service
@@ -289,10 +290,12 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
     }
 
     /**
-     * Import profiles from configuration directory on startup
+     * Import profiles from configuration directory on startup.
+     * Uses recursive directory scanning to discover nested folder structures created by content packs.
      *
      * @param configPath Base configuration directory path (e.g., /path/to/configuration)
      *                   Expected subdirectories: syncprofile/ and synctasktype/
+     *                   Supports nested structures: e.g., contentpack1/syncprofile/
      *                   If null, reads from global property ugandaemrsync.configuration.directory
      */
     public void importConfigurationsFromDirectory(String configPath) {
@@ -301,8 +304,6 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             configPath = getConfigDirectoryPath();
         }
 
-        // Import from syncprofile and synctasktype subdirectories directly
-        // (not under hie/ - the global property can point to the exact location)
         Path baseConfigDir = Paths.get(configPath);
         if (!Files.exists(baseConfigDir)) {
             log.info("Configuration directory not found: " + baseConfigDir);
@@ -311,45 +312,54 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
 
         log.info("Importing configurations from: " + baseConfigDir);
 
-        // Import profiles
-        Path profileDir = baseConfigDir.resolve("syncprofile");
+        // Find all syncprofile directories recursively (max depth: 5)
+        List<Path> profileDirs = findDirectoriesByName(baseConfigDir, "syncprofile", 5);
+        if (!profileDirs.isEmpty()) {
+            log.info("Found " + profileDirs.size() + " syncprofile director" +
+                     (profileDirs.size() == 1 ? "y" : "ies") + " in configuration directory");
+        }
+
         List<SyncFhirProfile> importedProfiles = new ArrayList<>();
-        if (Files.exists(profileDir)) {
-            try {
-                Files.list(profileDir).filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+        for (Path profileDir : profileDirs) {
+            try (Stream<Path> stream = Files.list(profileDir)) {
+                stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
                     try {
                         SyncFhirProfile profile = importProfileFromFile(p.toFile());
                         importedProfiles.add(profile);
-                        log.info("Imported profile: " + profile.getName());
+                        log.info("Imported profile from: " + profile.getName() + " (source: " + p + ")");
                     } catch (Exception e) {
                         log.warn("Failed to import profile from " + p.getFileName(), e);
                     }
                 });
-
-                // Log import summary
-                if (!importedProfiles.isEmpty()) {
-                    log.info(generateImportSummary(importedProfiles));
-                }
-
             } catch (IOException e) {
-                log.error("Error listing profile files", e);
+                log.error("Error listing profile files in: " + profileDir, e);
             }
         }
 
-        // Import task types
-        Path taskTypeDir = baseConfigDir.resolve("synctasktype");
-        if (Files.exists(taskTypeDir)) {
-            try {
-                Files.list(taskTypeDir).filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+        // Log import summary for profiles
+        if (!importedProfiles.isEmpty()) {
+            log.info(generateImportSummary(importedProfiles));
+        }
+
+        // Find all synctasktype directories recursively (max depth: 5)
+        List<Path> taskTypeDirs = findDirectoriesByName(baseConfigDir, "synctasktype", 5);
+        if (!taskTypeDirs.isEmpty()) {
+            log.info("Found " + taskTypeDirs.size() + " synctasktype director" +
+                     (taskTypeDirs.size() == 1 ? "y" : "ies") + " in configuration directory");
+        }
+
+        for (Path taskTypeDir : taskTypeDirs) {
+            try (Stream<Path> stream = Files.list(taskTypeDir)) {
+                stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
                     try {
                         SyncTaskType taskType = importTaskTypeFromFile(p.toFile());
-                        log.info("Imported task type: " + taskType.getName());
+                        log.info("Imported task type: " + taskType.getName() + " (source: " + p + ")");
                     } catch (Exception e) {
                         log.warn("Failed to import task type from " + p.getFileName(), e);
                     }
                 });
             } catch (IOException e) {
-                log.error("Error listing task type files", e);
+                log.error("Error listing task type files in: " + taskTypeDir, e);
             }
         }
     }
@@ -382,7 +392,63 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
     }
 
     /**
+     * Recursively find all directories with a specific name under a base directory.
+     * This method supports discovering nested folder structures created by content packs.
+     *
+     * Example: If baseDir is "configuration/hie" and folderName is "syncprofile",
+     * it will find:
+     * - configuration/hie/syncprofile/
+     * - configuration/hie/contentpack1/syncprofile/
+     * - configuration/hie/contentpack2/nested/syncprofile/
+     *
+     * @param baseDir The directory to start searching from
+     * @param folderName The folder name to search for (e.g., "syncprofile", "synctasktype")
+     * @param maxDepth Maximum recursion depth to prevent excessive scanning (default: 5)
+     * @return List of paths to matching directories
+     */
+    private List<Path> findDirectoriesByName(Path baseDir, String folderName, int maxDepth) {
+        List<Path> matches = new ArrayList<>();
+        findDirectoriesByNameRecursive(baseDir, folderName, 0, maxDepth, matches);
+        return matches;
+    }
+
+    /**
+     * Recursive helper method for finding directories by name.
+     *
+     * @param currentDir The current directory being examined
+     * @param folderName The folder name to search for
+     * @param currentDepth Current recursion depth
+     * @param maxDepth Maximum recursion depth
+     * @param matches List to accumulate matching directory paths
+     */
+    private void findDirectoriesByNameRecursive(Path currentDir, String folderName,
+                                                int currentDepth, int maxDepth, List<Path> matches) {
+        if (currentDepth > maxDepth) {
+            return;
+        }
+
+        try {
+            // Check if current directory matches the target folder name
+            if (currentDir.getFileName() != null &&
+                currentDir.getFileName().toString().equals(folderName)) {
+                matches.add(currentDir);
+                log.debug("Found matching directory: " + currentDir);
+            }
+
+            // Recurse into subdirectories
+            try (Stream<Path> stream = Files.list(currentDir)) {
+                stream.filter(Files::isDirectory)
+                      .forEach(subDir -> findDirectoriesByNameRecursive(
+                          subDir, folderName, currentDepth + 1, maxDepth, matches));
+            }
+        } catch (IOException e) {
+            log.debug("Could not read directory: " + currentDir + " - " + e.getMessage());
+        }
+    }
+
+    /**
      * Import configurations from classpath resources (bundled with module)
+     * Uses recursive directory scanning to discover nested folder structures created by content packs.
      *
      * @return true if configurations were found and imported, false otherwise
      */
@@ -392,59 +458,76 @@ public class FhirProfileImportServiceImpl implements FhirProfileImportService {
             int importCount = 0;
             List<SyncFhirProfile> importedProfiles = new ArrayList<>();
 
-            // Import profiles from classpath
-            String profilePath = "configuration/hie/syncprofile/";
-            Enumeration<URL> profileResources = classLoader.getResources(profilePath);
+            // Get the base HIE directory from classpath
+            String baseHiePath = "configuration/hie/";
+            Enumeration<URL> hieResources = classLoader.getResources(baseHiePath);
 
-            if (profileResources.hasMoreElements()) {
-                URL profileUrl = profileResources.nextElement();
-                if ("file".equals(profileUrl.getProtocol())) {
-                    File profileDir = new File(profileUrl.toURI());
-                    if (profileDir.exists() && profileDir.isDirectory()) {
-                        File[] profileFiles = profileDir.listFiles((dir, name) -> name.endsWith(".json"));
-                        if (profileFiles != null && profileFiles.length > 0) {
-                            log.info("Found " + profileFiles.length + " profile files in classpath");
-                            for (File file : profileFiles) {
-                                try {
-                                    SyncFhirProfile profile = importProfileFromFile(file);
-                                    importedProfiles.add(profile);
-                                    log.info("Imported profile from classpath: " + profile.getName());
-                                    importCount++;
-                                } catch (Exception e) {
-                                    log.warn("Failed to import profile from classpath: " + file.getName(), e);
-                                }
-                            }
+            if (!hieResources.hasMoreElements()) {
+                log.debug("No HIE configuration directory found on classpath");
+                return false;
+            }
+
+            URL hieUrl = hieResources.nextElement();
+            if (!"file".equals(hieUrl.getProtocol())) {
+                log.warn("Classpath resources not in file format, cannot scan recursively");
+                return false;
+            }
+
+            File hieDir = new File(hieUrl.toURI());
+            if (!hieDir.exists() || !hieDir.isDirectory()) {
+                log.debug("HIE directory does not exist or is not a directory: " + hieDir);
+                return false;
+            }
+
+            // Find all syncprofile directories recursively (max depth: 5)
+            List<Path> profileDirs = findDirectoriesByName(hieDir.toPath(), "syncprofile", 5);
+            if (!profileDirs.isEmpty()) {
+                log.info("Found " + profileDirs.size() + " syncprofile director" +
+                         (profileDirs.size() == 1 ? "y" : "ies") + " on classpath");
+            }
+
+            for (Path profileDir : profileDirs) {
+                File dir = profileDir.toFile();
+                File[] profileFiles = dir.listFiles((d, name) -> name.endsWith(".json"));
+                if (profileFiles != null && profileFiles.length > 0) {
+                    log.info("Processing " + profileFiles.length + " profile file(s) in: " + profileDir);
+                    for (File file : profileFiles) {
+                        try {
+                            SyncFhirProfile profile = importProfileFromFile(file);
+                            importedProfiles.add(profile);
+                            log.info("Imported profile from classpath: " + profile.getName());
+                            importCount++;
+                        } catch (Exception e) {
+                            log.warn("Failed to import profile from classpath: " + file.getName(), e);
                         }
                     }
                 }
             }
 
-            // Log import summary
+            // Log import summary for profiles
             if (!importedProfiles.isEmpty()) {
                 log.info(generateImportSummary(importedProfiles));
             }
 
-            // Import task types from classpath
-            String taskTypePath = "configuration/hie/synctasktype/";
-            Enumeration<URL> taskTypeResources = classLoader.getResources(taskTypePath);
+            // Find all synctasktype directories recursively (max depth: 5)
+            List<Path> taskTypeDirs = findDirectoriesByName(hieDir.toPath(), "synctasktype", 5);
+            if (!taskTypeDirs.isEmpty()) {
+                log.info("Found " + taskTypeDirs.size() + " synctasktype director" +
+                         (taskTypeDirs.size() == 1 ? "y" : "ies") + " on classpath");
+            }
 
-            if (taskTypeResources.hasMoreElements()) {
-                URL taskTypeUrl = taskTypeResources.nextElement();
-                if ("file".equals(taskTypeUrl.getProtocol())) {
-                    File taskTypeDir = new File(taskTypeUrl.toURI());
-                    if (taskTypeDir.exists() && taskTypeDir.isDirectory()) {
-                        File[] taskTypeFiles = taskTypeDir.listFiles((dir, name) -> name.endsWith(".json"));
-                        if (taskTypeFiles != null && taskTypeFiles.length > 0) {
-                            log.info("Found " + taskTypeFiles.length + " task type files in classpath");
-                            for (File file : taskTypeFiles) {
-                                try {
-                                    SyncTaskType taskType = importTaskTypeFromFile(file);
-                                    log.info("Imported task type from classpath: " + taskType.getName());
-                                    importCount++;
-                                } catch (Exception e) {
-                                    log.warn("Failed to import task type from classpath: " + file.getName(), e);
-                                }
-                            }
+            for (Path taskTypeDir : taskTypeDirs) {
+                File dir = taskTypeDir.toFile();
+                File[] taskTypeFiles = dir.listFiles((d, name) -> name.endsWith(".json"));
+                if (taskTypeFiles != null && taskTypeFiles.length > 0) {
+                    log.info("Processing " + taskTypeFiles.length + " task type file(s) in: " + taskTypeDir);
+                    for (File file : taskTypeFiles) {
+                        try {
+                            SyncTaskType taskType = importTaskTypeFromFile(file);
+                            log.info("Imported task type from classpath: " + taskType.getName());
+                            importCount++;
+                        } catch (Exception e) {
+                            log.warn("Failed to import task type from classpath: " + file.getName(), e);
                         }
                     }
                 }
