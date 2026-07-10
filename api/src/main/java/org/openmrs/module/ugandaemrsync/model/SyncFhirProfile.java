@@ -72,7 +72,7 @@ public class SyncFhirProfile extends BaseOpenmrsData implements Serializable {
     @Column(name = "case_based_primary_resource_type_id", length = 255)
     private String caseBasedPrimaryResourceTypeId;
 
-    @Column(name = "resource_search_parameter", length = 5000)
+    @Column(name = "resource_search_parameter", length = 65535)
     @Type(type = "text")
     private String resourceSearchParameter;
 

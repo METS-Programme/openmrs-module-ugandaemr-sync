@@ -573,9 +573,9 @@ public class UgandaEMRSyncDao {
         String sql = "SELECT cm.patient_id FROM cohort_member cm " +
                      "INNER JOIN cohort c ON cm.cohort_id = c.cohort_id " +
                      "INNER JOIN cohort_type ct ON c.cohort_type_id = ct.cohort_type_id " +
-                     "WHERE ct.uuid = ? AND c.voided = 0 AND cm.voided = 0";
+                     "WHERE ct.uuid = :cohortTypeUuid AND c.voided = 0 AND cm.voided = 0";
         SQLQuery sqlQuery = getSession().createSQLQuery(sql);
-        sqlQuery.setParameter(0, cohortTypeUuid);
+        sqlQuery.setParameter("cohortTypeUuid", cohortTypeUuid);
         return sqlQuery.list();
     }
 
@@ -618,7 +618,7 @@ public class UgandaEMRSyncDao {
                      "AND orders.date_created >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
 
         SQLQuery sqlQuery = getSession().createSQLQuery(sql);
-        sqlQuery.setParameter(0, days);
+        sqlQuery.setParameter(1, days);
         List<Object> results = sqlQuery.list();
 
         List<Integer> orderIds = new ArrayList<>();
